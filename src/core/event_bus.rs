@@ -22,7 +22,7 @@ impl NyaEventBus {
 }
 
 #[async_trait::async_trait]
-trait EventBus : AsyncBus {
+trait EventBus: AsyncBus {
   fn on(&mut self, event: Event, handler: Arc<dyn Handler>);
   async fn emit(&self, event: Event, payload: Payload);
 }
@@ -52,46 +52,96 @@ impl EventBus for NyaEventBus {
 // make this dryn
 #[cfg(test)]
 mod event_bus_tests{
-  use super::*;
+  use std::sync::Mutex;
+  use crate::core::payload::{extract, payload};
+  use tokio;
 
-  struct TestEventHandler;
-  struct LogEventHandler;
+use super::*;
+  
+  pub struct LogHandler {
+    pub messages: Arc<Mutex<Vec<String>>>, // Public for test inspection
+  }
 
-  #[async_trait::async_trait]
-  impl Handler for TestEventHandler {
-      async fn handler(&self, payload: &mut dyn Any) {
-          if let Some(_cell) = payload.downcast_ref::<RefCell<String>>() {
-            println!("test_event");
+  impl LogHandler {
+      pub fn new() -> Self {
+          Self {
+              messages: Arc::new(Mutex::new(Vec::new())),
           }
+      }
+      
+      // Helper for tests
+      pub fn get_messages(&self) -> Vec<String> {
+          self.messages.lock().unwrap().clone()
       }
   }
 
   #[async_trait::async_trait]
-  impl Handler for LogEventHandler {
-      async fn handler(&self, payload: &mut dyn Any) {
-          if let Some(logs) = payload.downcast_ref::<RefCell<Vec<String>>>() {
-            logs.borrow_mut().push(String::from("test_string"));
+  impl Handler for LogHandler {
+      async fn run(&self, payload: Payload) {
+          if let Some(message) = extract::<String>(&payload) {
+              let mut msgs = self.messages.lock().unwrap();
+              msgs.push(message.clone());
           }
       }
-  }
-
-  #[test]
-  fn can_get_event_handler_names() {
-    let event = TestEventHandler;
-    let event_name = &event.name();
-    let event_short_name = &event.short_name();
-    assert!(&event_name.contains("TestEventHandler"));
-    assert_eq!(*event_short_name, "TestEventHandler");
   }
 
   #[tokio::test]
-  async fn can_call_handler() {
-      let mut logs: RefCell<Vec<String>> = RefCell::new(vec![]);
-      let event = LogEventHandler;
-
-      let _ = event.handler(&mut logs as &mut dyn Any).await;
-
-      assert_eq!(logs.borrow().len(), 1);
-      assert_eq!(logs.borrow()[0], "test_string");
+  async fn can_register_events() {
+    let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
+    let handler = LogHandler::new();
+    let mut bus = event_bus.lock().unwrap();
+    bus.on(Event::TestEvent, Arc::new(handler));
+    assert_eq!(bus.event_handlers.len(), 1);
   }
+
+  #[tokio::test]
+  async fn event_bus_can_run_handlers_on_event() {
+    let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
+    let handler = Arc::new(LogHandler::new());
+    let arc_msg = Arc::clone(&handler.messages);
+    {
+      let mut bus = event_bus.lock().unwrap();
+      bus.on(Event::TestEvent, handler);
+      bus.emit(Event::TestEvent, payload("test_string".to_string())).await;
+    }
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    let value: usize = 1; 
+    assert_eq!(&arc_msg.lock().unwrap().len(), &value);
+    assert_eq!(&arc_msg.lock().unwrap()[0], "test_string");
+  }
+
+  #[tokio::test]
+  async fn event_bus_can_run_multiple_handlers_for_same_event() {
+    let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
+    let handler = Arc::new(LogHandler::new());
+    let handler2 = Arc::new(LogHandler::new());
+    let arc_msg = Arc::clone(&handler.messages);
+    let arc_msg2 = Arc::clone(&handler2.messages);
+    {
+      let mut bus = event_bus.lock().unwrap();
+      bus.on(Event::TestEvent, handler);
+      bus.on(Event::TestEvent, handler2);
+      bus.emit(Event::TestEvent, payload("test_string".to_string())).await;
+    }
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    let value: usize = 1; 
+    assert_eq!(&arc_msg.lock().unwrap().len(), &value);
+    assert_eq!(&arc_msg2.lock().unwrap().len(), &value);
+  }
+
+  #[tokio::test]
+  async fn event_bus_doesnt_run_if_theres_no_event() {
+    let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
+    let handler = Arc::new(LogHandler::new());
+    let arc_msg = Arc::clone(&handler.messages);
+    {
+      let mut bus = event_bus.lock().unwrap();
+      bus.on(Event::Custom("FakeEvent".to_string()), handler);
+      bus.emit(Event::TestEvent, payload("test_string".to_string())).await;
+    }
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    let value: usize = 0; 
+    assert_eq!(&arc_msg.lock().unwrap().len(), &value);
+  }
+
 }
