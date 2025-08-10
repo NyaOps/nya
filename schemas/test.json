@@ -1,0 +1,10 @@
+[
+  {
+    "cmd": "test1",
+    "steps": [
+      "TestEvent1",
+      "TestEvent2",
+      "TestEvent3"
+    ]
+  }
+]

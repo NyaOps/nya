@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::core::event::Event;
 use crate::core::handler:: Handler;
 use crate::core::payload::Payload;
 use tokio; 
@@ -9,8 +8,8 @@ use tokio;
 pub trait AsyncBus: Send + Sync + 'static {}
 impl<T: Send + Sync + 'static> AsyncBus for T {}
 
-struct NyaEventBus {
-  event_handlers: HashMap<Event, Vec<Arc<dyn Handler>>>,
+pub struct NyaEventBus {
+  event_handlers: HashMap<String, Vec<Arc<dyn Handler>>>,
 }
 
 impl NyaEventBus {
@@ -22,21 +21,21 @@ impl NyaEventBus {
 }
 
 #[async_trait::async_trait]
-trait EventBus: AsyncBus {
-  fn on(&mut self, event: Event, handler: Arc<dyn Handler>);
-  async fn emit(&self, event: Event, payload: Payload);
+pub trait EventBus: AsyncBus {
+  fn on(&mut self, event: String, handler: Arc<dyn Handler>);
+  async fn emit(&self, event: String, payload: Payload);
 }
 
 #[async_trait::async_trait]
 impl EventBus for NyaEventBus {
-    fn on(&mut self, event: Event, handler: Arc<dyn Handler>) {
+    fn on(&mut self, event: String, handler: Arc<dyn Handler>) {
       self.event_handlers
         .entry(event)
         .or_insert_with(Vec::new)
         .push(handler)
       }
     
-    async fn emit(&self, event: Event, payload: Payload) {
+    async fn emit(&self, event: String, payload: Payload) {
         if let Some(handlers) = self.event_handlers.get(&event) {
             for handler in handlers {
               let payload_clone = Arc::clone(&payload);
@@ -68,11 +67,6 @@ use super::*;
               messages: Arc::new(Mutex::new(Vec::new())),
           }
       }
-      
-      // Helper for tests
-      pub fn get_messages(&self) -> Vec<String> {
-          self.messages.lock().unwrap().clone()
-      }
   }
 
   #[async_trait::async_trait]
@@ -90,7 +84,7 @@ use super::*;
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
     let handler = LogHandler::new();
     let mut bus = event_bus.lock().unwrap();
-    bus.on(Event::TestEvent, Arc::new(handler));
+    bus.on("test_event".to_string(), Arc::new(handler));
     assert_eq!(bus.event_handlers.len(), 1);
   }
 
@@ -101,8 +95,8 @@ use super::*;
     let arc_msg = Arc::clone(&handler.messages);
     {
       let mut bus = event_bus.lock().unwrap();
-      bus.on(Event::TestEvent, handler);
-      bus.emit(Event::TestEvent, payload("test_string".to_string())).await;
+      bus.on("test_event".to_string(), handler);
+      bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     let value: usize = 1; 
@@ -119,9 +113,9 @@ use super::*;
     let arc_msg2 = Arc::clone(&handler2.messages);
     {
       let mut bus = event_bus.lock().unwrap();
-      bus.on(Event::TestEvent, handler);
-      bus.on(Event::TestEvent, handler2);
-      bus.emit(Event::TestEvent, payload("test_string".to_string())).await;
+      bus.on("test_event".to_string(), handler);
+      bus.on("test_event".to_string(), handler2);
+      bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     let value: usize = 1; 
@@ -136,8 +130,8 @@ use super::*;
     let arc_msg = Arc::clone(&handler.messages);
     {
       let mut bus = event_bus.lock().unwrap();
-      bus.on(Event::Custom("FakeEvent".to_string()), handler);
-      bus.emit(Event::TestEvent, payload("test_string".to_string())).await;
+      bus.on("fake_event".to_string(), handler);
+      bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     let value: usize = 0; 
