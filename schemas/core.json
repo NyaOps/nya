@@ -1,0 +1,23 @@
+{
+  "test_cmd_3": {
+    "steps": [
+      "test_event_1",
+      "test_event_2",
+      "test_event_3"
+    ]
+  },
+  "test_cmd_4": {
+    "steps": [
+      "test_event_4",
+      "test_event_5",
+      "test_event_6"
+    ]
+  },
+  "test_cmd_5": {
+    "steps": [
+      "test_event_4",
+      "test_event_5",
+      "test_event_6"
+    ]
+  }
+}

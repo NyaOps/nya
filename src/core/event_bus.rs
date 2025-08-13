@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+
 use crate::core::handler:: Handler;
 use crate::core::payload::Payload;
-use tokio; 
+use tokio::task::JoinHandle; 
 
 pub trait AsyncBus: Send + Sync + 'static {}
 impl<T: Send + Sync + 'static> AsyncBus for T {}
@@ -23,7 +24,7 @@ impl NyaEventBus {
 #[async_trait::async_trait]
 pub trait EventBus: AsyncBus {
   fn on(&mut self, event: String, handler: Arc<dyn Handler>);
-  async fn emit(&self, event: String, payload: Payload);
+  async fn emit(&self, event: String, payload: Payload) -> JoinHandle<()>;
 }
 
 #[async_trait::async_trait]
@@ -35,16 +36,23 @@ impl EventBus for NyaEventBus {
         .push(handler)
       }
     
-    async fn emit(&self, event: String, payload: Payload) {
+    async fn emit(&self, event: String, payload: Payload) -> JoinHandle<()> {
+      let mut join_handles = Vec::new();
         if let Some(handlers) = self.event_handlers.get(&event) {
             for handler in handlers {
               let payload_clone = Arc::clone(&payload);
               let handler_clone = Arc::clone(handler);
-              tokio::spawn(async move {
+              let handle = tokio::spawn(async move {
                   handler_clone.run(payload_clone).await;
               });
+              join_handles.push(handle);
             }
         }
+      tokio::spawn(async move {
+        for handle in join_handles {
+          let _ = handle.await;
+        }
+      })
     }
 }
 
@@ -118,7 +126,7 @@ use super::*;
       bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    let value: usize = 1; 
+    let value: usize = 1;
     assert_eq!(&arc_msg.lock().unwrap().len(), &value);
     assert_eq!(&arc_msg2.lock().unwrap().len(), &value);
   }

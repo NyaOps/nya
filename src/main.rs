@@ -1,3 +1,4 @@
+use nya::core::schema::{SchemaRegistry};
+
 fn main() {
-    println!("Hello, world!");
 }
