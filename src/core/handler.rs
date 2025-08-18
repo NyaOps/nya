@@ -1,4 +1,5 @@
-use crate::core::payload::{Payload};
+use crate::core::context::NyaContext;
+
 pub trait AsyncHandler: Send + Sync + 'static {}
 impl<T: Send + Sync + 'static> AsyncHandler for T {}
 
@@ -10,19 +11,19 @@ pub trait Handler: AsyncHandler {
   fn short_name(&self) -> &'static str {
       std::any::type_name::<Self>().rsplit("::").next().unwrap_or("Unknown")
   }
-  async fn run(&self, payload: Payload);
+  async fn run(&self, ctx: ExecutionContext);
 }
 
 #[cfg(test)]
 mod handler_tests{
   use std::{sync::{Arc, Mutex}};
-  use crate::core::{handler::Handler, payload::{extract, Payload, payload}};
+  use crate::core::{context::ExecutionContext, handler::Handler};
 
   pub struct TestHandler;
 
   #[async_trait::async_trait]
   impl Handler for TestHandler {
-      async fn run(&self, _: Payload) {
+      async fn run(&self, _: ExecutionContext) {
             println!("test_event");
       }
   }
@@ -46,8 +47,8 @@ mod handler_tests{
 
   #[async_trait::async_trait]
   impl Handler for LogHandler {
-      async fn run(&self, payload: Payload) {
-          if let Some(message) = extract::<String>(&payload) {
+      async fn run(&self, ctx: ExecutionContext) {
+          if let Some(message) =  {
               let mut msgs = self.messages.lock().unwrap();
               msgs.push(message.clone());
           }

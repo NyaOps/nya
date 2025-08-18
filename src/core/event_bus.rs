@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 
 use crate::core::handler:: Handler;
-use crate::core::payload::Payload;
 use tokio::task::JoinHandle; 
 
 pub trait AsyncBus: Send + Sync + 'static {}
