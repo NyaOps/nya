@@ -1,15 +1,15 @@
+// need to make handler implicit part of event bus
 use std::collections::HashMap;
 use std::sync::Arc;
-
-
-use crate::core::handler:: Handler;
-use tokio::task::JoinHandle; 
+use crate::core::context::NyaContext;
+use crate::core::service::{ServiceFunction};
+use tokio::task::JoinHandle;
 
 pub trait AsyncBus: Send + Sync + 'static {}
 impl<T: Send + Sync + 'static> AsyncBus for T {}
 
 pub struct NyaEventBus {
-  event_handlers: HashMap<String, Vec<Arc<dyn Handler>>>,
+  event_handlers: HashMap<String, Vec<ServiceFunction>>
 }
 
 impl NyaEventBus {
@@ -22,27 +22,27 @@ impl NyaEventBus {
 
 #[async_trait::async_trait]
 pub trait EventBus: AsyncBus {
-  fn on(&mut self, event: String, handler: Arc<dyn Handler>);
-  async fn emit(&self, event: String, payload: Payload) -> JoinHandle<()>;
+  fn on(&mut self, event: String, handler: ServiceFunction);
+  async fn emit(&self, event: String, ctx: NyaContext) -> JoinHandle<()>;
 }
 
 #[async_trait::async_trait]
 impl EventBus for NyaEventBus {
-    fn on(&mut self, event: String, handler: Arc<dyn Handler>) {
+    fn on(&mut self, event: String, handler: ServiceFunction) {
       self.event_handlers
         .entry(event)
         .or_insert_with(Vec::new)
         .push(handler)
       }
     
-    async fn emit(&self, event: String, payload: Payload) -> JoinHandle<()> {
+    async fn emit(&self, event: String, ctx: NyaContext) -> JoinHandle<()> {
       let mut join_handles = Vec::new();
         if let Some(handlers) = self.event_handlers.get(&event) {
             for handler in handlers {
-              let payload_clone = Arc::clone(&payload);
+              let payload_clone = Arc::clone(&ctx);
               let handler_clone = Arc::clone(handler);
               let handle = tokio::spawn(async move {
-                  handler_clone.run(payload_clone).await;
+                  handler_clone(payload_clone).await;
               });
               join_handles.push(handle);
             }
@@ -58,91 +58,84 @@ impl EventBus for NyaEventBus {
 // make this dryn
 #[cfg(test)]
 mod event_bus_tests{
-  use std::sync::Mutex;
-  use crate::core::payload::{extract, payload};
-  use tokio;
+  use std::{collections::HashMap, sync::{Arc, Mutex}};
+  use serde_json::from_value;
 
-use super::*;
-  
-  pub struct LogHandler {
-    pub messages: Arc<Mutex<Vec<String>>>, // Public for test inspection
-  }
-
-  impl LogHandler {
-      pub fn new() -> Self {
-          Self {
-              messages: Arc::new(Mutex::new(Vec::new())),
-          }
-      }
-  }
-
-  #[async_trait::async_trait]
-  impl Handler for LogHandler {
-      async fn run(&self, payload: Payload) {
-          if let Some(message) = extract::<String>(&payload) {
-              let mut msgs = self.messages.lock().unwrap();
-              msgs.push(message.clone());
-          }
-      }
-  }
+use crate::core::
+    {
+      context::NyaContext, 
+      event_bus::{NyaEventBus, EventBus}, 
+      service::
+        {
+          service_tests::TestService, Service
+        }
+    };
 
   #[tokio::test]
   async fn can_register_events() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler = LogHandler::new();
     let mut bus = event_bus.lock().unwrap();
-    bus.on("test_event".to_string(), Arc::new(handler));
+    bus.on("test_event".to_string(), TestService::register()[0].1.clone());
     assert_eq!(bus.event_handlers.len(), 1);
   }
 
   #[tokio::test]
   async fn event_bus_can_run_handlers_on_event() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler = Arc::new(LogHandler::new());
-    let arc_msg = Arc::clone(&handler.messages);
+    let handler= TestService::register()[0].1.clone();
+    let event_name = TestService::name();
+    let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
     {
       let mut bus = event_bus.lock().unwrap();
-      bus.on("test_event".to_string(), handler);
-      bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
+      bus.on(event_name.clone(), handler);
+      bus.emit(event_name, new_nya_ctx.clone()).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    let value: usize = 1; 
-    assert_eq!(&arc_msg.lock().unwrap().len(), &value);
-    assert_eq!(&arc_msg.lock().unwrap()[0], "test_string");
+    let ctx = new_nya_ctx.lock().unwrap();
+    let ctx_val = ctx.get("test_key").unwrap();
+    let value: String = from_value(ctx_val.clone()).unwrap();
+    assert_eq!(value, "test_value".to_string());
   }
 
   #[tokio::test]
   async fn event_bus_can_run_multiple_handlers_for_same_event() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler = Arc::new(LogHandler::new());
-    let handler2 = Arc::new(LogHandler::new());
-    let arc_msg = Arc::clone(&handler.messages);
-    let arc_msg2 = Arc::clone(&handler2.messages);
+    let handler1= TestService::register()[0].1.clone();
+    let handler2= TestService::register()[1].1.clone();
+    let event_name = TestService::name();
+    let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
     {
       let mut bus = event_bus.lock().unwrap();
-      bus.on("test_event".to_string(), handler);
-      bus.on("test_event".to_string(), handler2);
-      bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
+      bus.on(event_name.clone(), handler1);
+      bus.on(event_name.clone(), handler2);
+      bus.emit(event_name, new_nya_ctx.clone()).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    let value: usize = 1;
-    assert_eq!(&arc_msg.lock().unwrap().len(), &value);
-    assert_eq!(&arc_msg2.lock().unwrap().len(), &value);
+    let ctx = new_nya_ctx.lock().unwrap();
+    let ctx_val = ctx.get("test_key").unwrap();
+    let ctx_val2 = ctx.get("test_key2").unwrap();
+    let value: String = from_value(ctx_val.clone()).unwrap();
+    let value2: String = from_value(ctx_val2.clone()).unwrap();
+    assert_eq!(value, "test_value".to_string());
+    assert_eq!(value2, "test_value2".to_string());
   }
 
   #[tokio::test]
   async fn event_bus_doesnt_run_if_theres_no_event() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler = Arc::new(LogHandler::new());
-    let arc_msg = Arc::clone(&handler.messages);
+    let handler= TestService::register()[0].1.clone();
+    let event_name = TestService::name();
+    let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
     {
       let mut bus = event_bus.lock().unwrap();
-      bus.on("fake_event".to_string(), handler);
-      bus.emit("test_event".to_string(), payload("test_string".to_string())).await;
+      bus.on(event_name.clone(), handler);
+      bus.emit("fake_event".to_string(), new_nya_ctx.clone()).await;
     }
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    let value: usize = 0; 
-    assert_eq!(&arc_msg.lock().unwrap().len(), &value);
+    let ctx = new_nya_ctx.lock().unwrap();
+    let ctx_val = ctx.capacity();
+    let value: usize = 0;
+    assert_eq!(value, ctx_val);
   }
 
 }
