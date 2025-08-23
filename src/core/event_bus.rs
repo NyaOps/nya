@@ -5,9 +5,6 @@ use crate::core::context::NyaContext;
 use crate::core::service::{ServiceFunction};
 use tokio::task::JoinHandle;
 
-pub trait AsyncBus: Send + Sync + 'static {}
-impl<T: Send + Sync + 'static> AsyncBus for T {}
-
 pub struct NyaEventBus {
   event_handlers: HashMap<String, Vec<ServiceFunction>>
 }
@@ -21,7 +18,7 @@ impl NyaEventBus {
 }
 
 #[async_trait::async_trait]
-pub trait EventBus: AsyncBus {
+pub trait EventBus: Send + Sync + 'static {
   fn on(&mut self, event: String, handler: ServiceFunction);
   async fn emit(&self, event: String, ctx: NyaContext) -> JoinHandle<()>;
 }
