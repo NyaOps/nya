@@ -90,7 +90,7 @@ use crate::core::
       bus.on(event_name.clone(), handler);
       bus.emit(event_name, new_nya_ctx.clone()).await;
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await;
     let ctx = new_nya_ctx.lock().unwrap();
     let ctx_val = ctx.get("test_key").unwrap();
     let value: String = from_value(ctx_val.clone()).unwrap();
@@ -110,7 +110,7 @@ use crate::core::
       bus.on(event_name.clone(), handler2);
       bus.emit(event_name, new_nya_ctx.clone()).await;
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await;
     let ctx = new_nya_ctx.lock().unwrap();
     let ctx_val = ctx.get("test_key").unwrap();
     let ctx_val2 = ctx.get("test_key2").unwrap();
@@ -131,7 +131,7 @@ use crate::core::
       bus.on(event_name.clone(), handler);
       bus.emit("fake_event".to_string(), new_nya_ctx.clone()).await;
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await;
     let ctx = new_nya_ctx.lock().unwrap();
     let ctx_val = ctx.capacity();
     let value: usize = 0;
