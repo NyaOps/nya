@@ -52,13 +52,12 @@ impl EventBus for NyaEventBus {
     }
 }
 
-// make this dryn
 #[cfg(test)]
 mod event_bus_tests{
   use std::{collections::HashMap, sync::{Arc, Mutex}};
   use serde_json::from_value;
 
-use crate::core::
+  use crate::core::
     {
       context::NyaContext, 
       event_bus::{NyaEventBus, EventBus}, 

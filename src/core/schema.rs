@@ -5,7 +5,7 @@ use std::collections::HashMap;
 // Embed entire schemas directory at compile time
 static SCHEMAS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/schemas");
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Schema {
     pub steps: Vec<String>,
 }
@@ -60,7 +60,7 @@ mod schema_tests {
     fn schema_registry_lists_current_schemas() -> Result<(), String> {
       let registry: SchemaRegistry = SchemaRegistry::new()?;
       let schema_names: Vec<&String> = registry.list_schemas();
-      let found:bool = schema_names.iter().any(|name| *name == "test_cmd_1");
+      let found:bool = schema_names.iter().any(|name| *name == "test_cmd");
       assert!(found, "test_cmd_1 schema should exist");
       assert!(schema_names.len() > 0, "Should have at least one schema");
       Ok(())
@@ -69,11 +69,11 @@ mod schema_tests {
     #[test]
     fn can_get_specific_schema() -> Result<(), String> {
         let registry = SchemaRegistry::new()?;
-        let schema = registry.get_schema("test_cmd_1");
+        let schema = registry.get_schema("test_cmd");
         assert!(schema.is_some(), "test_cmd_1 schema should exist");
         if let Some(schema) = schema {
-            assert_eq!(schema.steps.len(), 3);
-            assert_eq!(schema.steps[0], "test_event_1");
+            assert_eq!(schema.steps.len(), 2);
+            assert_eq!(schema.steps[0], "test_event");
         }
         Ok(())
     }
