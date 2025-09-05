@@ -1,4 +1,3 @@
-// need to make handler implicit part of event bus
 use std::collections::HashMap;
 use std::sync::Arc;
 use crate::core::context::NyaContext;
@@ -71,15 +70,17 @@ mod event_bus_tests{
   async fn can_register_events() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
     let mut bus = event_bus.lock().unwrap();
-    bus.on("test_event".to_string(), TestService::register()[0].1.clone());
+    let svc = Box::new(TestService);
+    bus.on("test_event".to_string(), svc.register()[0].1.clone());
     assert_eq!(bus.event_handlers.len(), 1);
   }
 
   #[tokio::test]
   async fn event_bus_can_run_handlers_on_event() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler= TestService::register()[0].1.clone();
-    let event_name = TestService::name();
+    let svc = Box::new(TestService);
+    let handler= svc.register()[0].1.clone();
+    let event_name = svc.name();
     let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
     {
       let mut bus = event_bus.lock().unwrap();
@@ -96,9 +97,10 @@ mod event_bus_tests{
   #[tokio::test]
   async fn event_bus_can_run_multiple_handlers_for_same_event() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler1= TestService::register()[0].1.clone();
-    let handler2= TestService::register()[1].1.clone();
-    let event_name = TestService::name();
+    let svc = Box::new(TestService);
+    let handler1= svc.register()[0].1.clone();
+    let handler2= svc.register()[1].1.clone();
+    let event_name = svc.name();
     let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
     {
       let mut bus = event_bus.lock().unwrap();
@@ -119,8 +121,9 @@ mod event_bus_tests{
   #[tokio::test]
   async fn event_bus_doesnt_run_if_theres_no_event() {
     let event_bus = Arc::new(Mutex::new(NyaEventBus::new()));
-    let handler= TestService::register()[0].1.clone();
-    let event_name = TestService::name();
+    let svc = Box::new(TestService);
+    let handler= svc.register()[0].1.clone();
+    let event_name = svc.name();
     let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
     {
       let mut bus = event_bus.lock().unwrap();

@@ -1,8 +1,3 @@
-// planner's functionality
-//1) gets/receives a schema and bus
-//2) emits events
-//3) ends the CLI
-
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
@@ -14,14 +9,14 @@ pub struct Planner {
 }
 
 impl Planner {
-  fn new(bus: Arc<NyaEventBus>, schema: Schema) -> Self {
+  pub fn new(bus: Arc<NyaEventBus>, schema: Schema) -> Self {
     Self {
       event_bus: bus,
       schema
     }
   }
 
-  async fn execute(&self, ctx: NyaContext) -> Result<(), String>{
+  pub async fn execute(&self, ctx: NyaContext) -> Result<(), String>{
     
     for (i, step) in self.schema.steps.iter().enumerate() {
         println!("\n Step {}/{}: {}", i + 1, self.schema.steps.len(), step);
@@ -42,7 +37,7 @@ mod planner_tests{
   use std::{collections::HashMap, sync::{Arc, Mutex}};
   use serde_json::from_value;
 
-use crate::core::{event_bus::{EventBus, NyaEventBus}, planner::Planner, schema::{self, SchemaRegistry}, service::{service_tests::TestService, Service}};
+use crate::core::{event_bus::{EventBus, NyaEventBus}, planner::Planner, schema::SchemaRegistry, service::{service_tests::TestService, Service}};
 
   fn get_test_schema_registry() -> SchemaRegistry { 
     SchemaRegistry::new().unwrap()
@@ -50,8 +45,9 @@ use crate::core::{event_bus::{EventBus, NyaEventBus}, planner::Planner, schema::
 
   fn get_test_bus() -> Arc<NyaEventBus> {
     let mut bus= NyaEventBus::new();
-    _ = &bus.on("test_event".to_string(), TestService::register()[0].1.clone());
-    _ = &bus.on("test_event2".to_string(), TestService::register()[1].1.clone());
+    let svc = Box::new(TestService);
+    _ = &bus.on("test_event".to_string(), svc.register()[0].1.clone());
+    _ = &bus.on("test_event2".to_string(), svc.register()[1].1.clone());
     Arc::new(bus)
   }
 
