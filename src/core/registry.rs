@@ -1,30 +1,15 @@
-use crate::{core::{context::{get_nya_context, NyaContext}, schema::SchemaRegistry, service::Service}, core_services::nya_service::NyaService};
+use std::sync::Arc;
 
-pub struct Registry {
-  pub services: Vec<Box<dyn Service>>,
-  pub schemas: SchemaRegistry,
-  pub context: NyaContext
+use crate::{core::{context::NyaContext, event_bus::NyaEventBus, schema::SchemaRegistry, service::Service}, core_services::nya_service::NyaService};
+
+pub fn register_services() -> Vec<Box<dyn Service>> {
+  vec![
+    Box::new(NyaService),
+  ]
 }
 
-impl Registry {
-  pub fn new() -> Registry {
-    Self {
-      services: vec![
-        Box::new(NyaService),
-      ],
-      schemas: SchemaRegistry::new().unwrap(),
-      context: get_nya_context("./context/nya_test_context.json").unwrap()
-    }
-  }
-}
+pub fn register_schemas() -> SchemaRegistry { SchemaRegistry::new().unwrap() }
 
-#[cfg(test)]
-mod registry_tests {
-    use crate::core::registry::Registry;
-
-  #[test]
-  fn registry_initializes() {
-    let registry = Registry::new();
-    assert!(!registry.services.is_empty());
-  }
+pub fn register_context(ctx_path: &str, bus: Arc<NyaEventBus>) -> Arc<NyaContext> {
+  Arc::new(NyaContext::new(ctx_path, bus.clone()))
 }

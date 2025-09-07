@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::core::{context::NyaContext, service::{handle_function, Service}};
 
 pub struct NyaService;
@@ -8,8 +10,9 @@ impl Service for NyaService {
     }
 }
 
-pub async fn test_nya_service(ctx: NyaContext) {
-  let nya_ctx = ctx.lock().unwrap();
+pub async fn test_nya_service(ctx: Arc<NyaContext>) {
+  let nya_test_ctx = ctx.clone();
+  let nya_ctx = nya_test_ctx.context.lock().unwrap();
   let test_value = nya_ctx.get("test1")
       .and_then(|v| v.as_str()).unwrap();
   println!("Value from ctx: {}", test_value);

@@ -16,7 +16,7 @@ impl Planner {
     }
   }
 
-  pub async fn execute(&self, ctx: NyaContext) -> Result<(), String>{
+  pub async fn execute(&self, ctx: Arc<NyaContext>) -> Result<(), String>{
     
     for (i, step) in self.schema.steps.iter().enumerate() {
         println!("\n Step {}/{}: {}", i + 1, self.schema.steps.len(), step);
@@ -34,10 +34,10 @@ impl Planner {
 
 #[cfg(test)]
 mod planner_tests{
-  use std::{collections::HashMap, sync::{Arc, Mutex}};
+  use std::sync::Arc;
   use serde_json::from_value;
 
-use crate::core::{event_bus::{EventBus, NyaEventBus}, planner::Planner, schema::SchemaRegistry, service::{service_tests::TestService, Service}};
+use crate::core::{context::NyaContext, event_bus::{EventBus, NyaEventBus}, planner::Planner, schema::SchemaRegistry, service::{service_tests::TestService, Service}};
 
   fn get_test_schema_registry() -> SchemaRegistry { 
     SchemaRegistry::new().unwrap()
@@ -61,12 +61,12 @@ use crate::core::{event_bus::{EventBus, NyaEventBus}, planner::Planner, schema::
   #[tokio::test]
   async fn planner_can_execute_schema () -> Result<(), String> {
     let test_planner = get_test_planner();
-    let test_ctx = Arc::new(Mutex::new(HashMap::new()));
+    let test_ctx = Arc::new(NyaContext::new_create_bus("./context/nya_test_context.json"));
     {
       test_planner.execute(test_ctx.clone()).await?;
     }
     tokio::task::yield_now().await;
-    let ctx = test_ctx.lock().unwrap();
+    let ctx = test_ctx.context.lock().unwrap();
     let ctx_val = ctx.get("test_key").unwrap();
     let ctx_val2 = ctx.get("test_key2").unwrap();
     let value: String = from_value(ctx_val.clone()).unwrap();

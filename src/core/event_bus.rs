@@ -19,7 +19,7 @@ impl NyaEventBus {
 #[async_trait::async_trait]
 pub trait EventBus: Send + Sync + 'static {
   fn on(&mut self, event: String, handler: ServiceFunction);
-  async fn emit(&self, event: String, ctx: NyaContext) -> JoinHandle<()>;
+  async fn emit(&self, event: String, ctx: Arc<NyaContext>) -> JoinHandle<()>;
 }
 
 #[async_trait::async_trait]
@@ -31,7 +31,7 @@ impl EventBus for NyaEventBus {
         .push(handler)
       }
     
-    async fn emit(&self, event: String, ctx: NyaContext) -> JoinHandle<()> {
+    async fn emit(&self, event: String, ctx: Arc<NyaContext>) -> JoinHandle<()> {
       let mut join_handles = Vec::new();
         if let Some(handlers) = self.event_handlers.get(&event) {
             for handler in handlers {
@@ -53,7 +53,7 @@ impl EventBus for NyaEventBus {
 
 #[cfg(test)]
 mod event_bus_tests{
-  use std::{collections::HashMap, sync::{Arc, Mutex}};
+  use std::sync::{Arc, Mutex};
   use serde_json::from_value;
 
   use crate::core::
@@ -81,14 +81,14 @@ mod event_bus_tests{
     let svc = Box::new(TestService);
     let handler= svc.register()[0].1.clone();
     let event_name = svc.name();
-    let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
+    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./context/nya_test_context.json"));
     {
       let mut bus = event_bus.lock().unwrap();
       bus.on(event_name.clone(), handler);
       bus.emit(event_name, new_nya_ctx.clone()).await;
     }
     tokio::task::yield_now().await;
-    let ctx = new_nya_ctx.lock().unwrap();
+    let ctx = new_nya_ctx.context.lock().unwrap();
     let ctx_val = ctx.get("test_key").unwrap();
     let value: String = from_value(ctx_val.clone()).unwrap();
     assert_eq!(value, "test_value".to_string());
@@ -101,7 +101,7 @@ mod event_bus_tests{
     let handler1= svc.register()[0].1.clone();
     let handler2= svc.register()[1].1.clone();
     let event_name = svc.name();
-    let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
+    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./context/nya_test_context.json"));
     {
       let mut bus = event_bus.lock().unwrap();
       bus.on(event_name.clone(), handler1);
@@ -109,7 +109,7 @@ mod event_bus_tests{
       bus.emit(event_name, new_nya_ctx.clone()).await;
     }
     tokio::task::yield_now().await;
-    let ctx = new_nya_ctx.lock().unwrap();
+    let ctx = new_nya_ctx.context.lock().unwrap();
     let ctx_val = ctx.get("test_key").unwrap();
     let ctx_val2 = ctx.get("test_key2").unwrap();
     let value: String = from_value(ctx_val.clone()).unwrap();
@@ -124,17 +124,21 @@ mod event_bus_tests{
     let svc = Box::new(TestService);
     let handler= svc.register()[0].1.clone();
     let event_name = svc.name();
-    let new_nya_ctx = NyaContext::new(Mutex::new(HashMap::new()));
+    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./context/nya_test_context.json"));
     {
       let mut bus = event_bus.lock().unwrap();
       bus.on(event_name.clone(), handler);
       bus.emit("fake_event".to_string(), new_nya_ctx.clone()).await;
     }
     tokio::task::yield_now().await;
-    let ctx = new_nya_ctx.lock().unwrap();
+    let ctx = new_nya_ctx.context.lock().unwrap();
     let ctx_val = ctx.capacity();
-    let value: usize = 0;
+    let value: usize = 3;
     assert_eq!(value, ctx_val);
   }
+
+  // TODO: Now that bus is part of context, need to test 
+  // if service handler can call bus from context to trigger 
+  // event to run other handlers.
 
 }
