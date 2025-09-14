@@ -1,4 +1,9 @@
 {
+  "build:base": {
+    "steps": [
+      
+    ]
+  },
   "test_cmd": {
     "steps": [
       "test_event",

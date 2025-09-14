@@ -4,29 +4,16 @@ use std::{
 };
 use serde_json::Value;
 
-use crate::core::event_bus::NyaEventBus;
-
 type ExecutionContext = Arc<Mutex<HashMap<String, Value>>>;
 
 pub struct NyaContext {
-  pub context: ExecutionContext,
-  pub bus: Arc<NyaEventBus>
+  pub context: ExecutionContext
 }
 
-
 impl NyaContext {
-  pub fn new(path: &str, bus: Arc<NyaEventBus>) -> Self {
+  pub fn new(path: &str) -> Self {
       Self {
-          context: get_context(path).expect("context load failed"),
-          bus,
-      }
-  }
-  
-  pub fn new_create_bus(path: &str) -> Self {
-      let bus = Arc::new(NyaEventBus::new());
-      Self {
-          context: get_context(path).expect("context load failed"),
-          bus,
+          context: get_context(path).expect("context load failed")
       }
   }
 }
@@ -47,10 +34,9 @@ fn to_async_context(ctx: HashMap<String, Value>) -> ExecutionContext{
 mod context_tests {
     use crate::core::context::NyaContext;
 
-
     #[test]
     fn get_nya_context_returns_context() -> Result<(), String> {
-      let nya_context = NyaContext::new_create_bus("./context/nya_test_context.json");
+      let nya_context = NyaContext::new("./context/nya_test_context.json");
       let ctx = nya_context.context.lock().unwrap();
     
       let test_value = ctx.get("test1")
