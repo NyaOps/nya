@@ -5,15 +5,23 @@ use std::collections::HashMap;
 // Embed entire schemas directory at compile time
 static SCHEMAS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/schemas");
 
+type SchemaCollection = HashMap<String, NyaSchema>;
+type NyaSchemaSteps = Vec<String>;
+// type NyaSchemaInitialPayload
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct NyaSchema {
-    pub steps: Vec<String>,
+    pub steps: NyaSchemaSteps,
+    // pub initial_payload: HashMap<String, Value>
 }
 
 impl NyaSchema {
     pub fn new(cmd: &str) -> Self {
-        Self { 
-            steps: get_schema(cmd).unwrap(),
+        match get_schema(cmd) {
+            Ok(schema) => Self {
+                steps: schema,
+            },
+            Err(err) => { panic!("{}", err)}
         }
     }
     
@@ -23,9 +31,7 @@ impl NyaSchema {
     // }
 }
 
-type SchemaCollection = HashMap<String, NyaSchema>;
-
-fn get_schema(cmd: &str) -> Result<Vec<String>, String> {
+fn get_schema(cmd: &str) -> Result<NyaSchemaSteps, String> {
     let mut all_schemas: SchemaCollection = SchemaCollection::new();
     
     for file in SCHEMAS_DIR.files() {
@@ -42,26 +48,25 @@ fn get_schema(cmd: &str) -> Result<Vec<String>, String> {
         }
     }
     if let Some(schema) = all_schemas.get(cmd).clone() {
-        return Ok(schema.clone().steps)
+        return Ok(schema.clone().steps);
     }
     Err("Get Schema(): wasn't able to successfully retrieve schema".to_string())
 }
 
-// #[cfg(test)]
-// mod schema_tests {
-//     use crate::core::schema::NyaSchema;
+#[cfg(test)]
+mod schema_tests {
+    use crate::core::schema::NyaSchema;
 
-//     #[test]
-//     fn can_get_schema() -> Result<(), String> {
-//         let found = NyaSchema::new("test_cmd");
-//         assert!(found, "test_cmd_1 schema should exist");
-//         Ok(())
-//     }
+    #[test]
+    fn can_get_schema() {
+        let found = NyaSchema::new("test_cmd");
+        let steps_len: usize = 2;
+        assert_eq!(found.steps.len(), steps_len);
+    }
     
-//     #[test]
-//     fn returns_none_for_nonexistent_schema() -> Result<(), String> {
-//         let found = NyaSchema::new("nonexistent");
-//         assert!(found.is_none());
-//         Ok(())
-//     }
-// }
+    #[test]
+    #[should_panic]
+    fn panics_for_nonexistent_schema() {
+        _ = NyaSchema::new("nonexistent");
+    }
+}

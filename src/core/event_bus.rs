@@ -25,32 +25,32 @@ pub trait EventBus: Send + Sync + 'static {
 
 #[async_trait::async_trait]
 impl EventBus for NyaEventBus {
-    fn on(&mut self, event: String, handler: ServiceFunction) {
-      self.event_handlers
-        .entry(event)
-        .or_insert_with(Vec::new)
-        .push(handler)
-      }
-    
-    async fn emit(&self, nya: Nya, event: String, payload: Payload) -> JoinHandle<()> {
-      let mut join_handles = Vec::new();
-        if let Some(handlers) = self.event_handlers.get(&event) {
-            for handler in handlers {
-              let nya_clone = nya.clone();
-              let payload_clone = payload.clone();
-              let handler_clone = Arc::clone(handler);
-              let handle = tokio::spawn(async move {
-                  handler_clone(nya_clone, payload_clone).await;
-              });
-              join_handles.push(handle);
-            }
-        }
-      tokio::spawn(async move {
-        for handle in join_handles {
-          let _ = handle.await;
-        }
-      })
+  fn on(&mut self, event: String, handler: ServiceFunction) {
+    self.event_handlers
+      .entry(event)
+      .or_insert_with(Vec::new)
+      .push(handler)
     }
+  
+  async fn emit(&self, nya: Nya, event: String, payload: Payload) -> JoinHandle<()> {
+    let mut join_handles = Vec::new();
+      if let Some(handlers) = self.event_handlers.get(&event) {
+          for handler in handlers {
+            let nya_clone = nya.clone();
+            let payload_clone = payload.clone();
+            let handler_clone = Arc::clone(handler);
+            let handle = tokio::spawn(async move {
+                handler_clone(nya_clone, payload_clone).await;
+            });
+            join_handles.push(handle);
+          }
+      }
+    tokio::spawn(async move {
+      for handle in join_handles {
+        let _ = handle.await;
+      }
+    })
+  }
 }
 
 // #[cfg(test)]
@@ -138,9 +138,5 @@ impl EventBus for NyaEventBus {
 //     let value: usize = 3;
 //     assert_eq!(value, ctx_val);
 //   }
-
-//   // TODO: Now that bus is part of context, need to test 
-//   // if service handler can call bus from context to trigger 
-//   // event to run other handlers.
 
 // }

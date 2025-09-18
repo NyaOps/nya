@@ -17,34 +17,38 @@ pub trait Service: Send + Sync + 'static {
     fn register(&self) -> ServiceRegister;
 }
 
-// #[cfg(test)]
-// pub mod service_tests{
-//   use std::sync::Arc;
-//   use serde_json::from_value;
+#[cfg(test)]
+pub mod service_tests{
+  use std::sync::Arc;
+  use serde_json::from_value;
 
-// use crate::core::{context::NyaContext, service::{handle_function, NyaService, ServiceFunction, ServiceHandler}};
+use crate::{core::{context::NyaContext, payload::Payload, service::{handle_function, Service, ServiceFunction, ServiceRegister}}, runtime::nya::Nya};
 
-//   pub async fn test_fn(ctx: Arc<NyaContext>) {
-//     let current_ctx = ctx.clone();
-//     let mut test_ctx = current_ctx.context.lock().unwrap();
-//     test_ctx.insert("test_key".to_string(), serde_json::Value::String("test_value".to_string()));
-//   }
-//   pub async fn test_fn2(ctx: Arc<NyaContext>) {
-//     let current_ctx = ctx.clone();
-//     let mut test_ctx = current_ctx.context.lock().unwrap();
-//     test_ctx.insert("test_key2".to_string(), serde_json::Value::String("test_value2".to_string()));
-//   }
+// TODO: Since we're not longer passing the context into the service functions, we need 
+// Nya to have an api to allow us to get and set values to the context. Come back
+// later to these unit tests, or come up with a different testing pattern. 
 
-//   pub struct TestService;
-//   impl NyaService for TestService {
-//     fn name(&self) -> String { "Test Service".to_string()}
-//     fn register(&self) -> Vec<ServiceHandler> {
-//         vec![
-//           ("test".to_string(), handle_function(test_fn)),
-//           ("test".to_string(), handle_function(test_fn2))
-//         ]
-//     }
-//   }
+  pub async fn test_fn(nya: Nya, payload: Payload) {
+    // let current_ctx = ctx.clone();
+    // let mut test_ctx = current_ctx.context.lock().unwrap();
+    // test_ctx.insert("test_key".to_string(), serde_json::Value::String("test_value".to_string()));
+  }
+  pub async fn test_fn2(nya: Nya, payload: Payload) {
+    // let current_ctx = ctx.clone();
+    // let mut test_ctx = current_ctx.context.lock().unwrap();
+    // test_ctx.insert("test_key2".to_string(), serde_json::Value::String("test_value2".to_string()));
+  }
+
+  pub struct TestService;
+  impl Service for TestService {
+    fn name(&self) -> String { "Test Service".to_string()}
+    fn register(&self) -> ServiceRegister {
+        vec![
+          ("test".to_string(), handle_function(test_fn)),
+          ("test".to_string(), handle_function(test_fn2))
+        ]
+    }
+  }
 
 //   #[tokio::test]
 //   async fn can_create_service_function() {
@@ -73,4 +77,4 @@ pub trait Service: Send + Sync + 'static {
 //     let value: String = from_value(ctx_val.clone()).unwrap();
 //     assert_eq!(value, "test_value".to_string());
 //   }
-// }
+}

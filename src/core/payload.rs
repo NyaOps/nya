@@ -10,7 +10,6 @@ pub struct Payload {
 
 impl Payload {
     pub fn empty() -> Self { Self::default() }
-
     pub fn new<T>(v: T) -> Self
     where
         T: Any + Send + Sync + 'static,
@@ -30,7 +29,6 @@ pub enum PayloadError {
 
 pub trait Get {
     fn get<T: Any>(&self) -> Result<&T, PayloadError>;
-
     fn into_arc<T: Any + Send + Sync + 'static>(self) -> Result<Arc<T>, PayloadError>
     where
         Self: Sized;
