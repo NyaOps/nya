@@ -35,12 +35,16 @@ impl Nya {
     println!("\n Execution completed successfully!");
   }
 
-  pub async fn nya_ctx_get(&self, key: &str) -> Value {
+  pub async fn get(&self, key: &str) -> Value {
     let ctx = self.internals.context.lock().await;
     if let Some(item) = ctx.context.get(key) {
       return item.clone()
     }
     return Value::Null;
+  }
+
+  pub async fn trigger(&self, event: &str, payload: Payload) {
+    self.internals.bus.emit(self.clone(), event.to_string(), payload).await;
   }
 }
 
