@@ -7,12 +7,10 @@ static SCHEMAS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/schemas");
 
 type SchemaCollection = HashMap<String, NyaSchema>;
 type NyaSchemaSteps = Vec<String>;
-// type NyaSchemaInitialPayload
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct NyaSchema {
     pub steps: NyaSchemaSteps,
-    // pub initial_payload: HashMap<String, Value>
 }
 
 impl NyaSchema {

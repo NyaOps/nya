@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
+use serde::Serialize;
 use serde_json::Value;
 use tokio::{sync::Mutex, task::JoinHandle};
 use crate::core::{context::NyaContext, event_bus::{EventBus, NyaEventBus}, payload::Payload, schema::NyaSchema, service::Service};
@@ -41,6 +42,13 @@ impl Nya {
       return item.clone()
     }
     return Value::Null;
+  }
+
+  pub async fn set<T: Serialize>(&self, key: &str, value: T) {
+    let mut ctx = self.internals.context.lock().await;
+    if let Ok(json_value) = serde_json::to_value::<T>(value) {
+      ctx.context.insert(key.to_string(), json_value);
+    }
   }
 
   pub async fn trigger(&self, event: &str, payload: Payload) {

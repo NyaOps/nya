@@ -26,18 +26,18 @@ pub fn get_context(path: &str) -> Result<HashMap<String, Value>, String> {
 
 #[cfg(test)]
 mod context_tests {
-    use crate::core::context::NyaContext;
+  use crate::core::context::NyaContext;
 
-    #[test]
-    fn get_nya_context_returns_context() -> Result<(), String> {
-      let nya_context = NyaContext::new("./context/nya_test_context.json");
+  #[test]
+  fn get_nya_context_returns_context() -> Result<(), String> {
+    let nya_context = NyaContext::new("./context/nya_test_context.json");
+  
+    let test_value = nya_context.context.get("test")
+      .and_then(|v| v.as_str())
+      .ok_or("test1 not found or not a string")?;
     
-      let test_value = nya_context.context.get("test1")
-          .and_then(|v| v.as_str())
-          .ok_or("test1 not found or not a string")?;
-      
-      assert_eq!(test_value, "value1");
+    assert_eq!(test_value, "context_value");
 
-      Ok(())
-    }
+    Ok(())
+  }
 }

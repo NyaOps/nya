@@ -11,7 +11,6 @@
     ]
   },
   "test_cmd2": {
-    "initial_payload": {},
     "steps": [
       "test"
     ]
