@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::{sync::Mutex, task::JoinHandle};
@@ -66,4 +66,59 @@ fn build_nya_bus(reg: Vec<Box<dyn Service>>) -> NyaEventBus {
     nya_event_bus.on(handler.0, handler.1);
   }
   nya_event_bus
+}
+
+#[cfg(test)] 
+mod nya_tests {
+    use crate::{core::{payload::Payload, service::service_tests::TestService}, runtime::nya::Nya};
+
+  #[test]
+  fn can_build_nya() {
+    let _ = Nya::build("test_cmd", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+  }
+
+  #[tokio::test]
+  async fn can_run_nya_schema() {
+    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    {
+      nya.run(Payload::empty()).await;
+    }
+    tokio::task::yield_now().await;
+    let ctx = nya.internals.context.lock().await;
+    let val1 = ctx.context.get("test_key").unwrap().as_str().unwrap();
+    assert_eq!("test_value", val1);
+  }
+
+  #[tokio::test]
+  async fn can_get_value_from_nya() {
+    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    {
+      let _ = &nya.run(Payload::empty()).await;
+    }
+    tokio::task::yield_now().await;
+    let nya_val = &nya.get("test_key").await;
+    let val1 = nya_val.as_str().unwrap();
+    assert_eq!("test_value", val1);
+  }
+
+  #[tokio::test]
+  async fn can_set_value_on_nya() {
+    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    let _ = &nya.set("test_key", "test_value").await;
+    let nya_val = &nya.get("test_key").await;
+    let val1 = nya_val.as_str().unwrap();
+    assert_eq!("test_value", val1);
+  }
+
+  #[tokio::test]
+  async fn can_trigger_nya_event() {
+    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    {
+      nya.trigger("test", Payload::empty()).await;
+    }
+    tokio::task::yield_now().await;
+    let ctx = nya.internals.context.lock().await;
+    let val1 = ctx.context.get("test_key").unwrap().as_str().unwrap();
+    assert_eq!("test_value", val1);
+  }
 }
