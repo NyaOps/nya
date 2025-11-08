@@ -1,4 +1,4 @@
-use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}}};
+use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}}, core_services::ansible_service::ansible::Ansible};
 use crate::runtime::nya::Nya;
 
 pub struct NyaCore;
@@ -12,8 +12,9 @@ impl Service for NyaCore {
     ]
   }
 }
+
 pub async fn log(_: Nya, payload: Payload) {
-  println!("Value from log: {}", payload.get::<&str>().unwrap());
+  println!("{}", payload.get::<String>().unwrap());
 }
 
 pub async fn test_nya_service(nya: Nya, payload: Payload) {
@@ -27,5 +28,6 @@ pub async fn test_nya_service(nya: Nya, payload: Payload) {
 pub fn get_core_services() -> Vec<Box<dyn Service>> {
   vec![
     Box::new(NyaCore),
+    Box::new(Ansible),
   ]
 }

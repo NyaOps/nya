@@ -1,3 +1,31 @@
 {
-  "test": "context_value"
+  "test": "context_value",
+  "nya.control_plane": {
+    "all": {
+      "hosts": {
+        "control_plane": {
+          "ansible_host": "10.0.0.99",
+          "ansible_user": "ccj"
+        }
+      }
+    }
+  },
+  "nya.nodes": {
+    "all": {
+      "hosts": {
+        "worker1": {
+          "ansible_host": "10.0.0.100",
+          "ansible_user": "cryptochrisjames"
+        },
+        "worker2": {
+          "ansible_host": "10.0.0.101",
+          "ansible_user": "cryptochrisjames"
+        }
+      }
+    }
+  },
+  "nya.control_plane.vars": { 
+    "registry_host": "10.0.0.99:5000",
+    "k3s_token": "test"
+  }
 }

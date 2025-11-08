@@ -1,7 +1,9 @@
 {
   "build:base": {
     "steps": [
-      
+      "onBuildMainServer",
+      "onBuildNodeServers",
+      "onValidateCluster"
     ]
   },
   "test_cmd": {

@@ -1,0 +1,150 @@
+- name: Build Control Plane
+  hosts: all
+  become: yes
+  vars:
+    directories:
+      - "/data/docker_registry"
+  tasks:
+    - name: Create data directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      with_items: "{{ directories }}"
+    
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        # update_cache: yes
+
+    - name: Ensure requests is installed
+      ansible.builtin.apt:
+        name: python3-requests
+        state: present
+      become: true
+
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        update_cache: yes
+
+    - name: Configure Docker daemon
+      copy:
+        content: |
+          {
+            "insecure-registries": ["{{ registry_host }}"]
+          }
+        dest: /etc/docker/daemon.json
+      notify: Restart Docker
+
+    - name: Create Docker Registry
+      docker_container:
+        name: registry
+        image: registry:2
+        ports:
+          - "5000:5000"
+        volumes:
+          - /data/docker_registry:/var/lib/registry
+        env:
+          REGISTRY_HTTP_TLS_ENABLE: "false"
+          REGISTRY_STORAGE_DELETE_ENABLED: "true"
+        restart_policy: always
+
+    - name: Stop K3s (if running)
+      systemd:
+        name: k3s
+        state: stopped
+      ignore_errors: yes  # Ignore if it's not running
+
+    - name: Uninstall K3s
+      shell: |
+        /usr/local/bin/k3s-uninstall.sh
+      args:
+        warn: false  # Suppress warnings if the script isn't found
+      ignore_errors: yes
+
+    - name: Remove K3s directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/rancher/k3s
+        - /var/lib/rancher/k3s
+        - /usr/local/bin/k3s
+        - /usr/local/bin/kubectl
+        - /usr/local/bin/crictl
+        - /usr/local/bin/ctr
+
+    - name: Install K3S
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_TOKEN={{ k3s_token }} sh -s - server \
+          --cluster-init \
+          --disable traefik \
+          --disable servicelb \
+          --disable local-storage \
+          --advertise-address={{ ansible_host }} \
+          --node-ip={{ ansible_host }}
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Create K3s directory
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Configure K3s to use private registry
+      template:
+        src: registries.yaml.j2
+        dest: /etc/rancher/k3s/registries.yaml
+
+    - name: Enable and start K3S service
+      systemd:
+        name: k3s
+        enabled: yes
+        state: started
+
+    - name: Get node token
+      command: cat /var/lib/rancher/k3s/server/node-token
+      register: node_token
+      changed_when: false
+
+    - name: Set fact for node token
+      set_fact:
+        k3s_node_token: "{{ node_token.stdout }}"
+            
+  handlers:
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+
+    - name: Restart K3S
+      systemd:
+        name: k3s
+        state: restarted

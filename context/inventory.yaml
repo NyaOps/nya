@@ -1,0 +1,14 @@
+all:
+  hosts:
+    control_plane:
+      ansible_host: 10.0.0.99
+      ansible_user: ccj
+  children:
+    nodes:
+      hosts:
+        worker1:
+          ansible_host: 10.0.0.100
+          ansible_user: cryptochrisjames
+        worker2:
+          ansible_host: 10.0.0.101
+          ansible_user: cryptochrisjames
