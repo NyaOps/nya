@@ -8,6 +8,7 @@ use crate::core::{payload::Payload, service::{handle_function, Service, ServiceR
 use crate::runtime::nya::Nya;
 use std::fs;
 use std::path::PathBuf;
+use regex::Regex;
 
 pub struct Ansible;
 const BUILD_CONTROL_PLANE: &str = concat!(
@@ -62,6 +63,7 @@ async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
 
   // drastically shorter ControlPath template
   let cp_pattern = cp_dir.join("a%h-%p-%r"); // "a" prefix ensures filename not too long
+  let token_pattern = Regex::new(r#"K3S_TOKEN=(?P<token>[A-Za-z0-9:\.]+)"#).unwrap();
 
   let ssh_args = format!(
     "-o ControlMaster=auto -o ControlPersist=60s -o ControlPath={}",
@@ -87,7 +89,12 @@ async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
         let nya = nya.clone();
         async move {
             while let Ok(Some(line)) = out_reader.next_line().await {
-                let _ = nya.trigger("log", Payload::new(line.clone())).await;
+              if let Some(caps) = token_pattern.captures(&line) {
+                  let token = caps.name("token").unwrap().as_str().to_string();
+                  nya.set("k3s_token", token.clone()).await;
+                  let _ = nya.trigger("log", Payload::new(format!("Captured K3s token: {}", token))).await;
+              }
+              let _ = nya.trigger("log", Payload::new(line.clone())).await;
             }
         }
     });
