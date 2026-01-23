@@ -1,0 +1,111 @@
+- name: Setup Nya Worker Nodes
+  hosts: all
+  become: yes
+  vars_files:
+    - "../env/{{ env | default('dev') }}/vars.yml"
+  
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # Use this for AMD
+    # - name: Add Docker repository
+    #   apt_repository:
+    #     repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+    #     state: present
+
+    # Use this for ARM (Raspberry Pi)
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=arm64] https://download.docker.com/linux/debian bullseye stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        update_cache: yes
+
+    - name: Configure Docker daemon for private registry
+      copy:
+        content: |
+          {
+            "insecure-registries": ["{{ registry_host }}"]
+          }
+        dest: /etc/docker/daemon.json
+      notify: Restart Docker
+
+    - name: Stop K3s (if running)
+      systemd:
+        name: k3s
+        state: stopped
+      ignore_errors: yes  # Ignore if it's not running
+
+    - name: Uninstall K3s agent if exists
+      shell: |
+        if [ -f /usr/local/bin/k3s-agent-uninstall.sh ]; then
+          /usr/local/bin/k3s-agent-uninstall.sh
+        fi
+      args:
+        warn: false
+      ignore_errors: yes
+
+    - name: Remove K3s directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/rancher/k3s
+        - /var/lib/rancher/k3s
+        - /usr/local/bin/k3s
+        - /usr/local/bin/kubectl
+        - /usr/local/bin/crictl
+        - /usr/local/bin/ctr
+
+    - name: Install K3S agent
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ control_plane_ip }}:6443 K3S_TOKEN={{ k3s_node_token }} sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+    - name: Create K3s directory
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Configure K3s to use private registry
+      template:
+        src: templates/docker/node/{{ env | default('dev') }}/registries.yaml.j2
+        dest: /etc/rancher/k3s/registries.yaml
+      notify: Restart K3S
+
+    - name: Enable and start K3S service
+      systemd:
+        name: k3s-agent
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+
+    - name: Restart K3S
+      systemd:
+        name: k3s-agent
+        state: restarted

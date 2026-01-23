@@ -27,5 +27,8 @@
   "nya.control_plane.vars": { 
     "registry_host": "10.0.0.99:5000",
     "k3s_token": "test"
+  },
+  "nya.nodes.vars": {
+    "control_plane_ip": "10.0.0.99"
   }
 }

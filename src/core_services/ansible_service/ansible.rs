@@ -1,7 +1,7 @@
 use std::{env::{self, temp_dir}, process::Stdio};
 
 use anyhow::Error;
-use serde_json::{to_string, to_string_pretty};
+use serde_json::{Value, to_string, to_string_pretty};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
 
 use crate::core::{payload::Payload, service::{handle_function, Service, ServiceRegister}};
@@ -14,6 +14,11 @@ pub struct Ansible;
 const BUILD_CONTROL_PLANE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/playbooks/build_control_plane.yml"
+); 
+
+const BUILD_NODES: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/playbooks/build_nodes.yml"
 );
 
 impl Service for Ansible {
@@ -21,6 +26,7 @@ impl Service for Ansible {
   fn register(&self) -> ServiceRegister {
     vec![
       ("onBuildMainServer".to_string(), handle_function(build_control_plane)),
+      ("onBuildNodeServers".to_string(), handle_function(build_nodes)),
     ]
   }
 }
@@ -49,6 +55,46 @@ pub async fn build_control_plane(nya: Nya, _: Payload) {
   let temp_path_str = tmp_inv_path.to_string_lossy().to_string();
   println!("{}", vars_arg);
   let args = vec![BUILD_CONTROL_PLANE, "-i", &temp_path_str, "-e", &vars_arg];
+  if let Err(err) = run_playbook(args, nya.clone()).await {
+    let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
+  } else {
+      let _ = nya.trigger("log", Payload::new("Control plane built successfully.".to_string())).await;
+  }
+}
+
+async fn build_nodes (nya: Nya, _: Payload) {
+  _ = &nya.trigger("log", Payload::new("Building nodes...".to_string())).await;
+
+  let nya_inventory_value = nya.get("nya.nodes").await;
+  let mut tmp_inv_path = PathBuf::new();
+  match to_string_pretty(&nya_inventory_value) {
+    Ok(inv) => {
+      // write to a temp file instead of passing inline:
+      tmp_inv_path = temp_dir().join("inventory.json");
+      match std::fs::write(&tmp_inv_path, &inv) {
+        Err(e) => { let _ = nya.trigger("log", Payload::new(format!("Failed to create temp inventory file: {e}"))).await; },
+        _ => ()
+      }
+    },
+    Err(e) => { let _ = nya.trigger("log", Payload::new(format!("Couldn't read inventory: {e}"))).await; }
+  };
+
+  let node_token = nya.get("k3s_token").await;
+  let mut nya_vars_value = nya.get("nya.nodes.vars").await;
+
+  if let Value::Object(map) = &mut nya_vars_value {
+    if let Value::String(token) = node_token {
+        map.insert("k3s_node_token".into(), Value::String(token));
+    }
+  
+  }
+  
+  let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
+  let vars_arg = format!("{}", vars_json);
+
+  let temp_path_str = tmp_inv_path.to_string_lossy().to_string();
+  println!("{}", vars_arg);
+  let args = vec![BUILD_NODES, "-i", &temp_path_str, "-e", &vars_arg];
   if let Err(err) = run_playbook(args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
   } else {
