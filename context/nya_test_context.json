@@ -5,7 +5,8 @@
       "hosts": {
         "control_plane": {
           "ansible_host": "10.0.0.99",
-          "ansible_user": "ccj"
+          "ansible_user": "ccj",
+          "ansible_ssh_private_key_file": "~/.ssh/id_rsa"
         }
       }
     }
@@ -15,11 +16,13 @@
       "hosts": {
         "worker1": {
           "ansible_host": "10.0.0.100",
-          "ansible_user": "cryptochrisjames"
+          "ansible_user": "cryptochrisjames",
+          "ansible_ssh_private_key_file": "~/.ssh/id_rsa"
         },
         "worker2": {
           "ansible_host": "10.0.0.101",
-          "ansible_user": "cryptochrisjames"
+          "ansible_user": "cryptochrisjames",
+          "ansible_ssh_private_key_file": "~/.ssh/id_rsa"
         }
       }
     }
@@ -29,6 +32,7 @@
     "k3s_token": "test"
   },
   "nya.nodes.vars": {
+    "registry_host": "10.0.0.99:5000",
     "control_plane_ip": "10.0.0.99"
   }
 }

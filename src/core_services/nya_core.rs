@@ -1,4 +1,4 @@
-use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}}, core_services::ansible_service::ansible::Ansible};
+use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}}, core_services::nya_base::nya_base::NyaBase};
 use crate::runtime::nya::Nya;
 
 pub struct NyaCore;
@@ -28,6 +28,6 @@ pub async fn test_nya_service(nya: Nya, payload: Payload) {
 pub fn get_core_services() -> Vec<Box<dyn Service>> {
   vec![
     Box::new(NyaCore),
-    Box::new(Ansible),
+    Box::new(NyaBase),
   ]
 }

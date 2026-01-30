@@ -88,7 +88,7 @@
 
     - name: Configure K3s to use private registry
       template:
-        src: templates/docker/node/{{ env | default('dev') }}/registries.yaml.j2
+        src: registries.yaml.j2
         dest: /etc/rancher/k3s/registries.yaml
       notify: Restart K3S
 

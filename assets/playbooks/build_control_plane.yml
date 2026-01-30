@@ -13,6 +13,19 @@
         owner: root
         group: root
       with_items: "{{ directories }}"
+
+    - name: Fix any broken packages
+      shell: |
+        dpkg --configure -a
+        apt-get -f install -y
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Kill any hanging apt processes
+      shell: |
+        killall apt apt-get dpkg || true
+      ignore_errors: yes
+      changed_when: false
     
     - name: Install required packages
       apt:
