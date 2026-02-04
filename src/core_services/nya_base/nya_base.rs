@@ -21,6 +21,11 @@ const BUILD_NODES: &str = concat!(
     "/assets/playbooks/build_nodes.yml"
 );
 
+const POST_BUILD: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/playbooks/post_build.yml"
+);
+
 impl Service for NyaBase {
   fn name(&self) -> String {"NyaBase".to_string()}
   fn register(&self) -> ServiceRegister {
@@ -34,27 +39,12 @@ impl Service for NyaBase {
 async fn build_control_plane(nya: Nya, _: Payload) {
   _ = &nya.trigger("log", Payload::new("Building control plane...".to_string())).await;
 
-  let nya_inventory_value = nya.get("nya.control_plane").await;
-  let mut tmp_inv_path = PathBuf::new();
-  match to_string_pretty(&nya_inventory_value) {
-    Ok(inv) => {
-      // write to a temp file instead of passing inline:
-      tmp_inv_path = temp_dir().join("inventory.json");
-      match std::fs::write(&tmp_inv_path, &inv) {
-        Err(e) => { let _ = nya.trigger("log", Payload::new(format!("Failed to create temp inventory file: {e}"))).await; },
-        _ => ()
-      }
-    },
-    Err(e) => { let _ = nya.trigger("log", Payload::new(format!("Couldn't read inventory: {e}"))).await; }
-  };
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
 
   let nya_vars_value = nya.get("nya.control_plane.vars").await;
   let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
-  let vars_arg = format!("{}", vars_json);
 
-  let temp_path_str = tmp_inv_path.to_string_lossy().to_string();
-  println!("{}", vars_arg);
-  let args = vec![BUILD_CONTROL_PLANE, "-i", &temp_path_str, "-e", &vars_arg];
+  let args = vec![BUILD_CONTROL_PLANE, "-i", &temp_path_str, "-e", &vars_json];
   if let Err(err) = run_playbook(args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
   } else {
@@ -63,38 +53,15 @@ async fn build_control_plane(nya: Nya, _: Payload) {
 }
 
 async fn build_nodes (nya: Nya, _: Payload) {
-  let test = nya.get("k3s_node_token").await.to_string();
-  println!("TOKEN: {}", test);
   _ = &nya.trigger("log", Payload::new("Building nodes...".to_string())).await;
 
-  let nya_inventory_value = nya.get("nya.nodes").await;
-  let mut tmp_inv_path = PathBuf::new();
-  match to_string_pretty(&nya_inventory_value) {
-    Ok(inv) => {
-      tmp_inv_path = temp_dir().join("inventory.json");
-      match std::fs::write(&tmp_inv_path, &inv) {
-        Err(e) => { 
-          let _ = nya.trigger("log", Payload::new(format!("Failed to create temp inventory file: {e}"))).await; 
-        },
-        _ => ()
-      }
-    },
-    Err(e) => { 
-      let _ = nya.trigger("log", Payload::new(format!("Couldn't read inventory: {e}"))).await; 
-    }
-  };
-
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.nodes").await;
   let node_token = nya.get("k3s_node_token").await;
   let mut nya_vars_value = nya.get("nya.nodes.vars").await;
-
-  // Debug: log what we got
-  let _ = nya.trigger("log", Payload::new(format!("Retrieved k3s_token: {:?}", node_token))).await;
-  let _ = nya.trigger("log", Payload::new(format!("Retrieved nya.nodes.vars: {:?}", nya_vars_value))).await;
 
   if let Value::Object(map) = &mut nya_vars_value {
     if let Value::String(token) = node_token {
         map.insert("k3s_node_token".into(), Value::String(token.clone()));
-        let _ = nya.trigger("log", Payload::new(format!("Inserted k3s_node_token: {}", token))).await;
     } else {
         let _ = nya.trigger("log", Payload::new(format!("ERROR: k3s_token is not a String! Got: {:?}", node_token))).await;
     }
@@ -103,13 +70,7 @@ async fn build_nodes (nya: Nya, _: Payload) {
   }
   
   let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
-  
-  // Debug: show the final JSON
-  let _ = nya.trigger("log", Payload::new(format!("Final vars JSON being passed to Ansible: {}", vars_json))).await;
 
-  let temp_path_str = tmp_inv_path.to_string_lossy().to_string();
-  
-  // IMPORTANT: Don't wrap vars_json in another format!() - it's already a string
   let args = vec![BUILD_NODES, "-i", &temp_path_str, "-e", &vars_json];
   
   if let Err(err) = run_playbook(args, nya.clone()).await {
@@ -166,7 +127,6 @@ async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
               if let Some(caps) = token_pattern.captures(&line) {
                   let token = caps.name("token").unwrap().as_str().to_string();
                   nya.set("k3s_node_token", token.clone()).await;
-                  let _ = nya.trigger("log", Payload::new(format!("Captured K3s token: {}", token))).await;
               }
               let _ = nya.trigger("log", Payload::new(line.clone())).await;
             }
@@ -192,4 +152,21 @@ async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
         anyhow::bail!("ansible-playbook failed with {}", status);
     }
   Ok(())
+}
+
+async fn setup_temp_inventory(nya: Nya, key: &str) -> String {
+  let nya_inventory_value = nya.get(&key).await;
+  let mut tmp_inv_path = PathBuf::new();
+  match to_string_pretty(&nya_inventory_value) {
+    Ok(inv) => {
+      // write to a temp file instead of passing inline:
+      tmp_inv_path = temp_dir().join("inventory.json");
+      match std::fs::write(&tmp_inv_path, &inv) {
+        Err(e) => { let _ = nya.trigger("log", Payload::new(format!("Failed to create temp inventory file: {e}"))).await; },
+        _ => ()
+      }
+    },
+    Err(e) => { let _ = nya.trigger("log", Payload::new(format!("Couldn't read inventory: {e}"))).await; }
+  };
+  tmp_inv_path.to_string_lossy().to_string()
 }
