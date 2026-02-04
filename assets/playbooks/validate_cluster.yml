@@ -1,0 +1,19 @@
+- name: Validate Cluster
+  hosts: all
+  become: yes
+
+  tasks: 
+    - name: Validate cluster nodes are ready
+      command: kubectl get nodes --no-headers --kubeconfig=/etc/rancher/k3s/k3s.yaml
+      register: nodes_status
+      failed_when: "'NotReady' in nodes_status.stdout"
+
+    - name: Validate system pods are running
+      command: kubectl get pods -n kube-system --field-selector=status.phase!=Running --no-headers --kubeconfig=/etc/rancher/k3s/k3s.yaml
+      register: system_pods
+      failed_when: system_pods.stdout != ""
+
+    - name: Validate ingress-nginx is running
+      command: kubectl get pods -n ingress-nginx --field-selector=status.phase!=Running --no-headers --kubeconfig=/etc/rancher/k3s/k3s.yaml
+      register: ingress_pods
+      failed_when: ingress_pods.stdout != ""

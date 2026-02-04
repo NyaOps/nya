@@ -1,0 +1,133 @@
+- name: Post Build
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Setup nginx-ingress
+      block:
+        - name: Add nginx-ingress helm repo
+          command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+        - name: Update helm repos
+          command: helm repo update
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+        - name: Install nginx-ingress
+          command: |
+            helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+              --namespace ingress-nginx \
+              --create-namespace \
+              --set controller.service.type=NodePort \
+              --set controller.hostPort.enabled=true \
+              --set controller.kind=DaemonSet \
+              --set controller.publishService.enabled=true
+          args:
+            creates: /var/lib/rancher/k3s/server/manifests/ingress-nginx.yaml
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Setup Bind9
+      block:
+        - name: Install Bind9 packages
+          apt:
+            name:
+              - bind9
+              - bind9utils
+              - bind9-doc
+            state: present
+
+        - name: Create zones directory
+          file:
+            path: /etc/bind/zones
+            state: directory
+            mode: '0755'
+
+        - name: Configure named.conf.local
+          template:
+            src: named.conf.local.j2
+            dest: /etc/bind/named.conf.local
+          notify: Restart Bind9
+
+        - name: Configure named.conf.options
+          template:
+            src: named.conf.options.j2
+            dest: /etc/bind/named.conf.options
+          notify: Restart Bind9
+
+        - name: Configure zone file
+          template:
+            src: db.lab.j2
+            dest: /etc/bind/zones/db.lab
+          notify: Restart Bind9
+
+        - name: Enable and start Bind9
+          systemd:
+            name: named
+            enabled: yes
+            state: started
+    
+    - name: Install mkcert
+      block:
+        - name: Check if mkcert is already installed
+          command: which mkcert
+          register: mkcert_check
+          ignore_errors: yes  # Don't fail if it's not found
+
+        - name: Download mkcert
+          when: mkcert_check.rc != 0  # Only download if not installed
+          get_url:
+            url: "https://github.com/FiloSottile/mkcert/releases/download/{{ mkcert_version }}/mkcert-{{ mkcert_version }}-{{ mkcert_os }}-{{ mkcert_arch }}"
+            dest: /usr/local/bin/mkcert
+            mode: '0755'
+          register: download_mkcert
+
+        - name: Install mkcert CA (if downloaded)
+          command: mkcert -install
+          when: download_mkcert is defined and download_mkcert.changed
+
+    - name: Generate Wildcard SSL Certificate with mkcert
+      command: "mkcert -cert-file /tmp/{{ domain_name }}.pem -key-file /tmp/{{ domain_name }}-key.pem '*.{{ domain_name }}' {{ domain_name }}" # THIS IS THE KEY CHANGE
+      args:
+        creates: "/tmp/{{ domain_name }}.pem"  # Prevents re-running unnecessarily
+    
+    - name: Delete existing Kubernetes TLS Secret (if it exists)
+      command: >
+        kubectl delete secret {{ secret_name }}
+          --kubeconfig=/etc/rancher/k3s/k3s.yaml
+      ignore_errors: yes  # Don't fail if the secret doesn't exist
+
+    - name: Create Kubernetes TLS Secret
+      command: >
+        kubectl create secret tls {{ secret_name }}
+          --key /tmp/{{ domain_name }}-key.pem
+          --cert /tmp/{{ domain_name }}.pem
+          --kubeconfig=/etc/rancher/k3s/k3s.yaml
+      register: secret_creation  # Register the output of the command
+      changed_when: "'secret/{} created'.format(secret_name) in secret_creation.stdout"  # Correctly check for creation
+      failed_when:
+        - secret_creation.rc != 0  # Fail if the command returns a non-zero exit code
+        - "'secret/{} created'.format(secret_name) not in secret_creation.stdout" # AND it wasn't just because it already exists.
+        - "'already exists' not in secret_creation.stderr"
+
+    - name: remove cert files
+      file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      with_items:
+        - "{{ domain_name }}.pem"
+        - "{{ domain_name }}-key.pem"
+            
+  # Add at the end of your playbook
+  handlers:
+    - name: Restart Bind9
+      systemd:
+        name: named
+        state: restarted
+
+    - name: Restart K3S
+      systemd:
+        name: k3s
+        state: restarted

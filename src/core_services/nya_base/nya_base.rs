@@ -21,9 +21,14 @@ const BUILD_NODES: &str = concat!(
     "/assets/playbooks/build_nodes.yml"
 );
 
-const POST_BUILD: &str = concat!(
+const RUN_POST_BUILD: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/playbooks/post_build.yml"
+);
+
+const VALIDATE_CLUSTER: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/playbooks/validate_cluster.yml"
 );
 
 impl Service for NyaBase {
@@ -32,6 +37,8 @@ impl Service for NyaBase {
     vec![
       ("onBuildMainServer".to_string(), handle_function(build_control_plane)),
       ("onBuildNodeServers".to_string(), handle_function(build_nodes)),
+      ("onRunPostBuild".to_string(), handle_function(run_post_build)),
+      ("onValidateCluster".to_string(), handle_function(validate_cluster))
     ]
   }
 }
@@ -49,6 +56,22 @@ async fn build_control_plane(nya: Nya, _: Payload) {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
   } else {
       let _ = nya.trigger("log", Payload::new("Control plane built successfully.".to_string())).await;
+  }
+}
+
+async fn run_post_build(nya: Nya, _: Payload) {
+  _ = &nya.trigger("log", Payload::new("Running post build...".to_string())).await;
+
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
+
+  let nya_vars_value = nya.get("nya.control_plane.vars").await;
+  let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
+
+  let args = vec![RUN_POST_BUILD, "-i", &temp_path_str, "-e", &vars_json];
+  if let Err(err) = run_playbook(args, nya.clone()).await {
+    let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
+  } else {
+      let _ = nya.trigger("log", Payload::new("Post build ran successfully.".to_string())).await;
   }
 }
 
@@ -80,6 +103,21 @@ async fn build_nodes (nya: Nya, _: Payload) {
   }
 }
 
+async fn validate_cluster(nya: Nya, _: Payload) {
+  _ = &nya.trigger("log", Payload::new("Validating cluster...".to_string())).await;
+
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
+
+  let nya_vars_value = nya.get("nya.control_plane.vars").await;
+  let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
+
+  let args = vec![VALIDATE_CLUSTER, "-i", &temp_path_str, "-e", &vars_json];
+  if let Err(err) = run_playbook(args, nya.clone()).await {
+    let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
+  } else {
+      let _ = nya.trigger("log", Payload::new("Validated cluster successfully.".to_string())).await;
+  }
+}
 async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
 
   let cp_dir = PathBuf::from("/tmp/ssh");
@@ -120,7 +158,7 @@ async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
     let mut err_reader = BufReader::new(stderr).lines();
 
     // Pump stdout
-    let mut out_task = tokio::spawn({
+    let out_task = tokio::spawn({
         let nya = nya.clone();
         async move {
             while let Ok(Some(line)) = out_reader.next_line().await {
@@ -134,7 +172,7 @@ async fn run_playbook(cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {
     });
 
     // Pump stderr
-    let mut err_task = tokio::spawn({
+    let err_task = tokio::spawn({
         let nya = nya.clone();
         async move {
             while let Ok(Some(line)) = err_reader.next_line().await {

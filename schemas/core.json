@@ -3,7 +3,7 @@
     "steps": [
       "onBuildMainServer",
       "onBuildNodeServers",
-      "onPostBuild",
+      "onRunPostBuild",
       "onValidateCluster"
     ]
   },
