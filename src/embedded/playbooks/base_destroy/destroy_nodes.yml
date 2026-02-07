@@ -1,0 +1,71 @@
+- name: Destroy Worker Nodes
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Stop K3s agent service
+      systemd:
+        name: k3s-agent
+        state: stopped
+      ignore_errors: yes
+
+    - name: Uninstall K3s agent
+      shell: |
+        if [ -f /usr/local/bin/k3s-agent-uninstall.sh ]; then
+          /usr/local/bin/k3s-agent-uninstall.sh
+        fi
+      args:
+        warn: false
+      ignore_errors: yes
+
+    - name: Remove K3s directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/rancher/k3s
+        - /var/lib/rancher/k3s
+        - /usr/local/bin/k3s
+        - /usr/local/bin/kubectl
+        - /usr/local/bin/crictl
+        - /usr/local/bin/ctr
+
+    - name: Stop Docker service
+      systemd:
+        name: docker
+        state: stopped
+      ignore_errors: yes
+
+    - name: Remove Docker daemon config
+      file:
+        path: /etc/docker/daemon.json
+        state: absent
+
+    - name: Uninstall Docker
+      apt:
+        name: docker-ce
+        state: absent
+        purge: yes
+      ignore_errors: yes
+
+    # For AMD
+    # - name: Remove Docker repository
+    #   apt_repository:
+    #     repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+    #     state: absent
+
+    # For ARM (Raspberry Pi)
+    - name: Remove Docker repository
+      apt_repository:
+        repo: "deb [arch=arm64] https://download.docker.com/linux/debian bullseye stable"
+        state: absent
+
+    - name: Remove Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: absent
+
+    - name: Clean up apt cache
+      apt:
+        autoclean: yes
+        autoremove: yes

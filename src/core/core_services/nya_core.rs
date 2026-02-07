@@ -1,4 +1,4 @@
-use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}}, core_services::nya_base::nya_base::NyaBase};
+use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}, core_services::nya_base::NyaBase}};
 use crate::runtime::nya::Nya;
 
 pub struct NyaCore;

@@ -74,12 +74,12 @@ mod nya_tests {
 
   #[test]
   fn can_build_nya() {
-    let _ = Nya::build("test_cmd", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    let _ = Nya::build("test_cmd", "./tests/context/nya_test_context.json", vec![Box::new(TestService)]);
   }
 
   #[tokio::test]
   async fn can_run_nya_schema() {
-    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", "./tests/context/nya_test_context.json", vec![Box::new(TestService)]);
     {
       nya.run(Payload::empty()).await;
     }
@@ -91,7 +91,7 @@ mod nya_tests {
 
   #[tokio::test]
   async fn can_get_value_from_nya() {
-    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", "./tests/context/nya_test_context.json", vec![Box::new(TestService)]);
     {
       let _ = &nya.run(Payload::empty()).await;
     }
@@ -103,7 +103,7 @@ mod nya_tests {
 
   #[tokio::test]
   async fn can_set_value_on_nya() {
-    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", "./tests/context/nya_test_context.json", vec![Box::new(TestService)]);
     let _ = &nya.set("test_key", "test_value").await;
     let nya_val = &nya.get("test_key").await;
     let val1 = nya_val.as_str().unwrap();
@@ -112,7 +112,7 @@ mod nya_tests {
 
   #[tokio::test]
   async fn can_trigger_nya_event() {
-    let nya = Nya::build("test_cmd2", "./context/nya_test_context.json", vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", "./tests/context/nya_test_context.json", vec![Box::new(TestService)]);
     {
       nya.trigger("test", Payload::empty()).await;
     }

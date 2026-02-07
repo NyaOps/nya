@@ -10,8 +10,8 @@ async fn main() {
 
   match cli.command {
       Commands::Base { command } => match command {
-        BaseCommands::Build => { build::build().await },
-        BaseCommands::Destroy => { build::build().await }
+        BaseCommands::Build { context }=> { build::build(context).await },
+        BaseCommands::Destroy { context }=> { build::build(context).await }
       }
   }
 }

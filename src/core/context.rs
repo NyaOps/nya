@@ -30,7 +30,7 @@ mod context_tests {
 
   #[test]
   fn get_nya_context_returns_context() -> Result<(), String> {
-    let nya_context = NyaContext::new("./context/nya_test_context.json");
+    let nya_context = NyaContext::new("./tests/context/nya_test_context.json");
   
     let test_value = nya_context.context.get("test")
       .and_then(|v| v.as_str())

@@ -1,0 +1,120 @@
+- name: Destroy Control Plane
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Stop Docker Registry container
+      docker_container:
+        name: registry
+        state: absent
+      ignore_errors: yes
+
+    - name: Stop K3s service
+      systemd:
+        name: k3s
+        state: stopped
+      ignore_errors: yes
+
+    - name: Uninstall K3s
+      shell: |
+        /usr/local/bin/k3s-uninstall.sh
+      args:
+        warn: false
+      ignore_errors: yes
+
+    - name: Remove K3s directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/rancher/k3s
+        - /var/lib/rancher/k3s
+        - /usr/local/bin/k3s
+        - /usr/local/bin/kubectl
+        - /usr/local/bin/crictl
+        - /usr/local/bin/ctr
+
+    - name: Remove Docker Registry data
+      file:
+        path: /data/docker_registry
+        state: absent
+
+    - name: Stop Docker service
+      systemd:
+        name: docker
+        state: stopped
+      ignore_errors: yes
+
+    - name: Remove Docker daemon config
+      file:
+        path: /etc/docker/daemon.json
+        state: absent
+
+    - name: Uninstall Docker
+      apt:
+        name: docker-ce
+        state: absent
+        purge: yes
+      ignore_errors: yes
+
+    - name: Remove Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+        state: absent
+
+    - name: Remove Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: absent
+
+    - name: Stop Bind9 service
+      systemd:
+        name: named
+        state: stopped
+      ignore_errors: yes
+
+    - name: Uninstall Bind9
+      apt:
+        name:
+          - bind9
+          - bind9utils
+          - bind9-doc
+        state: absent
+        purge: yes
+
+    - name: Remove Bind9 configuration
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/bind/zones
+        - /etc/bind/named.conf.local
+        - /etc/bind/named.conf.options
+
+    - name: Remove Helm
+      file:
+        path: /usr/local/bin/helm
+        state: absent
+
+    - name: Remove mkcert
+      file:
+        path: /usr/local/bin/mkcert
+        state: absent
+
+    - name: Uninstall mkcert CA
+      command: mkcert -uninstall
+      ignore_errors: yes
+
+    - name: Remove temporary certificate files
+      file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      with_items:
+        - "{{ domain_name }}.pem"
+        - "{{ domain_name }}-key.pem"
+      ignore_errors: yes
+
+    - name: Clean up apt cache
+      apt:
+        autoclean: yes
+        autoremove: yes

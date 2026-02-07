@@ -30,7 +30,7 @@ use crate::core::{context::NyaContext, service::{handle_function, NyaService, Se
   #[tokio::test]
   async fn can_create_service_function() {
     let new_svc_fn: ServiceFunction = handle_function(test_fn);
-    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./context/nya_test_context.json"));
+    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./tests/context/nya_test_context.json"));
     new_svc_fn(new_nya_ctx.clone()).await;
     let ctx = new_nya_ctx.context.lock().unwrap();
     let ctx_val = ctx.get("test_key").unwrap();
@@ -40,7 +40,7 @@ use crate::core::{context::NyaContext, service::{handle_function, NyaService, Se
 
   #[tokio::test]
   async fn can_create_service() {
-    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./context/nya_test_context.json"));
+    let new_nya_ctx = Arc::new(NyaContext::new_create_bus("./tests/context/nya_test_context.json"));
     let svc = Box::new(TestService);
     let new_svc = &svc.register();
     let new_svc_name = &svc.name();

@@ -1,9 +1,6 @@
-use include_dir::{include_dir, Dir};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-// Embed entire schemas directory at compile time
-static SCHEMAS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/schemas");
+use crate::embedded::CORE_SCHEMA;
 
 type SchemaCollection = HashMap<String, NyaSchema>;
 type NyaSchemaSteps = Vec<String>;
@@ -23,7 +20,7 @@ impl NyaSchema {
         }
     }
     
-    //TODO: create fn to return schema collection
+    // TODO: create fn to return schema collection
     // pub fn list_schemas(&self) -> Vec<&String> {
     //     self.schemas.keys().collect()
     // }
@@ -31,20 +28,12 @@ impl NyaSchema {
 
 fn get_schema(cmd: &str) -> Result<NyaSchemaSteps, String> {
     let mut all_schemas: SchemaCollection = SchemaCollection::new();
-    
-    for file in SCHEMAS_DIR.files() {
-        if file.path().extension() == Some("json".as_ref()) {
-            let content = file.contents_utf8()
-                .ok_or("Invalid UTF-8 in schema file")?;
+    let core_schema_collection: SchemaCollection = serde_json::from_str(CORE_SCHEMA)
+        .map_err(|e| format!("Failed to parse {}: {}", CORE_SCHEMA, e))?;
             
-            let schema_collection: SchemaCollection = serde_json::from_str(content)
-                .map_err(|e| format!("Failed to parse {}: {}", file.path().display(), e))?;
-            
-            for (name, schema) in schema_collection {
-                all_schemas.insert(name, schema);
-            }
-        }
-    }
+    for (name, schema) in core_schema_collection {
+        all_schemas.insert(name, schema);
+    };
     if let Some(schema) = all_schemas.get(cmd).clone() {
         return Ok(schema.clone().steps);
     }

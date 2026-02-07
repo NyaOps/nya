@@ -1,5 +1,4 @@
 {
-  "test": "context_value",
   "nya.control_plane": {
     "all": {
       "hosts": {

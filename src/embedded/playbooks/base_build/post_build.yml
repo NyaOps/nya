@@ -59,8 +59,8 @@
 
         - name: Configure zone file
           template:
-            src: db.lab.j2
-            dest: /etc/bind/zones/db.lab
+            src: bind9.db.j2
+            dest: /etc/bind/zones/bind9.db
           notify: Restart Bind9
 
         - name: Enable and start Bind9

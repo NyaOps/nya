@@ -27,6 +27,12 @@ pub enum Commands {
 
 #[derive(Subcommand, Debug)]
 pub enum BaseCommands {
-  Build,
-  Destroy
+  Build {
+    #[arg(short, long)]
+    context: String,
+  },
+  Destroy{
+    #[arg(short, long)]
+    context: String,
+  },
 }
