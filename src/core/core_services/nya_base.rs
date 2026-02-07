@@ -21,7 +21,9 @@ impl Service for NyaBase {
       ("onBuildMainServer".to_string(), handle_function(build_control_plane)),
       ("onBuildNodeServers".to_string(), handle_function(build_nodes)),
       ("onRunPostBuild".to_string(), handle_function(run_post_build)),
-      ("onValidateCluster".to_string(), handle_function(validate_cluster))
+      ("onValidateCluster".to_string(), handle_function(validate_cluster)),
+      ("onDestroyControlPlane".to_string(), handle_function(destroy_control_plane)),
+      ("onDestroyNodes".to_string(), handle_function(destroy_nodes)),
     ]
   }
 }
@@ -104,6 +106,41 @@ async fn validate_cluster(nya: Nya, _: Payload) {
   } else {
       let _ = nya.trigger("log", Payload::new("Validated cluster successfully.".to_string())).await;
   }
+}
+
+async fn destroy_control_plane(nya: Nya, _: Payload) {
+  _ = &nya.trigger("log", Payload::new("Destroying control plane...".to_string())).await;
+
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
+
+  let nya_vars_value = nya.get("nya.control_plane.vars").await;
+  let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
+
+  let playbook_content = get_playbook("destroy_control_plane").unwrap();
+  let args = vec!["-i", &temp_path_str, "-e", &vars_json];
+  if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
+    let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
+  } else {
+      let _ = nya.trigger("log", Payload::new("Destroyed control plane successfully.".to_string())).await;
+  }
+}
+
+async fn destroy_nodes(nya: Nya, _: Payload) {
+  _ = &nya.trigger("log", Payload::new("Destroying nodes...".to_string())).await;
+
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
+
+  let nya_vars_value = nya.get("nya.control_plane.vars").await;
+  let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
+
+  let playbook_content = get_playbook("destroy_nodes").unwrap();
+  let args = vec!["-i", &temp_path_str, "-e", &vars_json];
+  if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
+    let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
+  } else {
+      let _ = nya.trigger("log", Payload::new("Destroyed nodes successfully.".to_string())).await;
+  }
+  
 }
 
 async fn run_playbook(content: &str, cmd_args: Vec<&str>, nya: Nya) -> Result<(), Error> {

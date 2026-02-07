@@ -20,7 +20,7 @@ pub fn get_playbook(name: &str) -> Option<&'static str> {
         "build_nodes" => Some(BUILD_NODES),
         "post_build" => Some(POST_BUILD),
         "validate_cluster" => Some(VALIDATE_CLUSTER),
-        "destroy_controler_plane" => Some(DESTROY_CONTROL_PLANE),
+        "destroy_control_plane" => Some(DESTROY_CONTROL_PLANE),
         "destroy_nodes" => Some(DESTROY_NODES),
         _ => None,
     }

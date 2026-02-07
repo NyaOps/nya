@@ -7,6 +7,12 @@
       "onValidateCluster"
     ]
   },
+  "base:destroy": {
+    "steps": [
+      "onDestroyNodes",
+      "onDestroyControlPlane"
+    ]
+  },
   "test_cmd": {
     "steps": [
       "test_event",

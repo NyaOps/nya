@@ -2,7 +2,7 @@ mod args;
 
 use args::{Cli, Commands, BaseCommands};
 use clap::Parser;
-use nya::cli::base::build;
+use nya::cli::base;
 
 #[tokio::main]
 async fn main() {
@@ -10,8 +10,8 @@ async fn main() {
 
   match cli.command {
       Commands::Base { command } => match command {
-        BaseCommands::Build { context }=> { build::build(context).await },
-        BaseCommands::Destroy { context }=> { build::build(context).await }
+        BaseCommands::Build { context }=> { base::build(context).await },
+        BaseCommands::Destroy { context }=> { base::destroy(context).await }
       }
   }
 }
