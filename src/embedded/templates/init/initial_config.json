@@ -1,0 +1,38 @@
+{
+  "nya.control_plane": {
+    "all": {
+      "hosts": {
+        "control_plane": {
+          "ansible_host": "provide your server's ip address or dns name",
+          "ansible_user": "provide your server's user name",
+          "ansible_ssh_private_key_file": "provide the path to your ssh private key file"
+        }
+      }
+    }
+  },
+  "nya.nodes": {
+    "all": {
+      "hosts": {
+        "worker1": {
+          "ansible_host": "provide your server's ip address or dns name",
+          "ansible_user": "provide your server's user name",
+          "ansible_ssh_private_key_file": "provide the path to your ssh private key file"
+        }
+      }
+    }
+  },
+  "nya.control_plane.vars": { 
+    "registry_host": "provide your control_plane's ip at port 5000",
+    "k3s_token": "provide any value",
+    "domain_name": "provide your full domain name",
+    "admin_email": "provider and email address",
+    "secret_name": "provide a secret name to use for your tls certs",
+    "mkcert_os": "provide the os you're building for (i.e. linux, win64)",
+    "mkcert_arch": "provide the cpu architecture you're building for (i.e. arm64, x86)",
+    "mkcert_version": "v1.4.4"
+  },
+  "nya.nodes.vars": {
+    "registry_host": "provide your control_plane's ip at port 5000",
+    "control_plane_ip": "provide your control plane's ip address"
+  }
+}

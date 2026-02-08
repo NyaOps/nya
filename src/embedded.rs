@@ -1,4 +1,5 @@
 pub const CORE_SCHEMA: &str = include_str!("embedded/core_schema.json");
+pub const BASE_CONFIG_TEMPLATE: &str = include_str!("embedded/templates/init/initial_config.json");
 
 // Templates
 pub const BIND9_DB: &str = include_str!("embedded/templates/base_build/bind9.db.j2");

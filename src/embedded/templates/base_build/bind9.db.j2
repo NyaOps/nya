@@ -1,11 +1,11 @@
 $TTL    604800
-@       IN      SOA     {{ dns_domain }}. admin.{{ dns_domain }}. (
+@       IN      SOA     {{ domain_name }}. admin.{{ domain_name }}. (
                      2023011801         ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
                          604800 )       ; Negative Cache TTL
 ;
-@       IN      NS      {{ dns_domain }}.
+@       IN      NS      {{ domain_name }}.
 @       IN      A       {{ ansible_host }}
 *       IN      A       {{ ansible_host }}
