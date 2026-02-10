@@ -128,9 +128,9 @@ async fn destroy_control_plane(nya: Nya, _: Payload) {
 async fn destroy_nodes(nya: Nya, _: Payload) {
   _ = &nya.trigger("log", Payload::new("Destroying nodes...".to_string())).await;
 
-  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
+  let temp_path_str = setup_temp_inventory(nya.clone(), "nya.nodes").await;
 
-  let nya_vars_value = nya.get("nya.control_plane.vars").await;
+  let nya_vars_value = nya.get("nya.nodes.vars").await;
   let vars_json = to_string(&nya_vars_value).unwrap_or_else(|_| "{}".to_string());
 
   let playbook_content = get_playbook("destroy_nodes").unwrap();

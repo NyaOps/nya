@@ -1,7 +1,5 @@
 use clap::{Parser, Subcommand};
 
-pub const BASE_CONFIG_DEFAULT_LOCATION: &str = "~/.nya/config.json";
-
 #[derive(Parser, Debug)]
 #[command(name = "nya")]
 #[command(version = "preview-1")]
@@ -14,8 +12,8 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
   Init {
-    #[arg(short, long, default_value = BASE_CONFIG_DEFAULT_LOCATION)]
-    output: String,
+    #[arg(short, long)]
+    output: Option<String>,
   },
 
   Base {
@@ -35,11 +33,11 @@ pub enum Commands {
 #[derive(Subcommand, Debug)]
 pub enum BaseCommands {
   Build {
-    #[arg(short, long, default_value = BASE_CONFIG_DEFAULT_LOCATION)]
-    config: String,
+    #[arg(short, long)]
+    config: Option<String>,
   },
   Destroy{
-    #[arg(short, long, default_value = BASE_CONFIG_DEFAULT_LOCATION)]
-    config: String,
+    #[arg(short, long)]
+    config: Option<String>,
   },
 }
