@@ -1,5 +1,5 @@
 use std::fs;
-use crate::{ embedded, utils::ConfigStatus};
+use crate::{ embedded, utils::ConfigStatus };
 use colored::*;
 use crate::utils;
 

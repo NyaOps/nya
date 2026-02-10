@@ -29,7 +29,7 @@ pub fn resolve_base_config(user_input: Option<&str>) -> ConfigStatus {
     ConfigStatus::Exists(final_path)
 }
 
-pub fn resolve_capsule_context(user_input: Option<&str>) -> Option<PathBuf> {
+pub fn resolve_capsule(user_input: Option<&str>) -> Option<PathBuf> {
     let path = if let Some(input) = user_input {
         let expanded = shellexpand::tilde(input).to_string();
         PathBuf::from(expanded)

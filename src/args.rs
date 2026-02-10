@@ -20,10 +20,12 @@ pub enum Commands {
     #[command(subcommand)]
     command: BaseCommands,
   },
-  // Capsule {
-  //   #[command(subcommand)]
-  //   command: CapsuleCommands,
-  // },
+
+  Capsule {
+    #[command(subcommand)]
+    command: CapsuleCommands,
+  },
+
   // Pack {
   //   #[command(subcommand)]
   //   command: PackCommands,
@@ -37,6 +39,19 @@ pub enum BaseCommands {
     config: Option<String>,
   },
   Destroy{
+    #[arg(short, long)]
+    config: Option<String>,
+  },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum CapsuleCommands {
+  Check {
+    #[arg(short, long)]
+    config: Option<String>,
+  },
+
+  New{
     #[arg(short, long)]
     config: Option<String>,
   },
