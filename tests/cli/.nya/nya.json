@@ -1,0 +1,25 @@
+{
+  "capsule": {
+    "name": "nya-test",
+    "created_at": "2026-02-13T18:18:44.813030+00:00",
+    "updated_at": "2026-02-14T09:32:01.723697+00:00",
+    "packs": [
+      {
+        "name": "testing-be",
+        "pack_type": "backend",
+        "location": "testing-be",
+        "created_at": "2026-02-14T09:20:25.298818+00:00",
+        "updated_at": "2026-02-14T09:20:25.299044+00:00",
+        "port": 80
+      },
+      {
+        "name": "testing-fe",
+        "pack_type": "frontend",
+        "location": "testing-fe",
+        "created_at": "2026-02-14T09:32:01.718260+00:00",
+        "updated_at": "2026-02-14T09:32:01.718568+00:00",
+        "port": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+components:
+  - name: testing-fe
+    type: "frontend"
+    replicaCount: 1
+    image:
+      name: testing-fe
+      tag: "latest"
+    service:
+      port: 80
+    ingress:
+      host: testing-fe
+    tls:
+      enabled: true
