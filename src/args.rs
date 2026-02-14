@@ -26,10 +26,10 @@ pub enum Commands {
     command: CapsuleCommands,
   },
 
-  // Pack {
-  //   #[command(subcommand)]
-  //   command: PackCommands,
-  // },
+  Pack {
+    #[command(subcommand)]
+    command: PackCommands,
+  },
 }
 
 #[derive(Subcommand, Debug)]
@@ -51,8 +51,21 @@ pub enum CapsuleCommands {
     config: Option<String>,
   },
 
-  New{
+  New {
     #[arg(short, long)]
     config: Option<String>,
+  },
+
+  List {
+    #[arg(short, long)]
+    config: Option<String>,
+  },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum PackCommands {
+  New {
+    #[arg(short, long)]
+    capsule: Option<String>,
   },
 }

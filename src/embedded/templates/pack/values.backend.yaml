@@ -1,0 +1,15 @@
+components:
+  - name: {{ name }}
+    type: "backend"
+    replicaCount: 1
+    image:
+      name: {{ name }}
+      tag: "latest"
+    service:
+      port: 80
+      targetPort: {{ port }}
+    ingress:
+      host: {{ name }}
+    tls:
+      enabled: true
+    

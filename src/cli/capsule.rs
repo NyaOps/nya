@@ -1,15 +1,22 @@
 use std::{env, fs, path::PathBuf};
 use colored::*;
 use inquire::Text;
-use serde_json::{ json, Value };
-use crate::utils;
+use serde::Serialize;
+use serde_json::Value;
+use crate::{cli::pack::Pack, utils};
 
-// pub struct Capsule {
-//     name: String,
-//     created_at: String,
-//     updated_at: String,
-//     packs: Vec<Pack>,
-// }
+#[derive(Serialize, Debug)]
+pub struct CapsuleData {
+  capsule: Capsule
+}
+
+#[derive(Serialize, Debug)]
+pub struct Capsule { 
+  name: String,
+  created_at: String,
+  updated_at: String,
+  packs: Vec<Pack>,
+}
 
 enum CreateNewCapsuleResult {
     Success(PathBuf),
@@ -47,14 +54,22 @@ fn create_new_capsule_file(output_path: Option<String>) -> CreateNewCapsuleResul
         Err(e) => return CreateNewCapsuleResult::Error(format!("Failed to read capsule name: {}", e)),
     };
   
-  let capsule = json!({
-      "capsule": {
-          "name": name,
-          "created_at": chrono::Utc::now().to_rfc3339(),
-          "updated_at": chrono::Utc::now().to_rfc3339(),
-          "packs": []
-      }
-  });
+  let capsule: CapsuleData = CapsuleData {
+    capsule: Capsule {
+        name: name,
+        created_at: chrono::Utc::now().to_rfc3339(),
+        updated_at: chrono::Utc::now().to_rfc3339(),
+        packs: Vec::new()
+    }
+  };
+
+  let capsule_string_result = serde_json::to_string_pretty(&capsule);
+  let capsule_string = match capsule_string_result {
+    Ok(c) => c,
+    Err(e) => {
+      return CreateNewCapsuleResult::Error(e.to_string())
+    }
+  };
     
   let file_path = get_capsule_path(output_path);
   
@@ -63,7 +78,7 @@ fn create_new_capsule_file(output_path: Option<String>) -> CreateNewCapsuleResul
       fs::create_dir_all(parent).expect("Failed to create directories");
   }
 
-  fs::write(&file_path, capsule.to_string()).expect("Failed to write capsule file");
+  fs::write(&file_path, capsule_string).expect("Failed to write capsule file");
 
   CreateNewCapsuleResult::Success(file_path)
 
@@ -83,19 +98,23 @@ pub fn check(path: Option<String>){
 }
 
 fn get_capsule_path(path: Option<String>) -> PathBuf {
-  let mut file_path =PathBuf::from(if let Some(input) = path {
+  let mut file_path = PathBuf::from(if let Some(input) = path {
     let expanded = shellexpand::tilde(&input).to_string();
     expanded.into()
   } else {
     env::current_dir().unwrap()
   });
 
+  if file_path.display().to_string().contains(".nya/nya.json") {
+    return file_path;
+  }
+
   file_path.push(".nya");
   file_path.push("nya.json");
   file_path
 }
 
-fn read_capsule_file(path: Option<String>) -> Option<Value> {
+pub fn read_capsule_file(path: Option<String>) -> Option<Value> {
   let file_path = get_capsule_path(path);
   let content = fs::read_to_string(file_path).ok()?;
   serde_json::from_str(&content).ok()
