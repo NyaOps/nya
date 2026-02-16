@@ -22,6 +22,12 @@ pub const VALIDATE_CLUSTER: &str = include_str!("embedded/playbooks/base_build/v
 pub const DESTROY_CONTROL_PLANE: &str = include_str!("embedded/playbooks/base_destroy/destroy_control_plane.yml");
 pub const DESTROY_NODES: &str = include_str!("embedded/playbooks/base_destroy/destroy_nodes.yml");
 
+// Helm charts
+pub const NYA_CHART: &str = include_str!("embedded/helm/Chart.yaml");
+pub const NYA_DEPLOYMENT_TEMPLATE: &str = include_str!("embedded/helm/deployment.yaml");
+pub const NYA_BACKEND_TEMPLATE: &str = include_str!("embedded/helm/backend.yaml");
+pub const NYA_FRONTEND_TEMPLATE: &str = include_str!("embedded/helm/frontend.yaml");
+
 pub fn get_playbook(name: &str) -> Option<&'static str> {
     match name {
         "build_control_plane" => Some(BUILD_CONTROL_PLANE),

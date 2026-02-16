@@ -119,7 +119,36 @@
       with_items:
         - "{{ domain_name }}.pem"
         - "{{ domain_name }}-key.pem"
-            
+    
+    - name: Create charts directory structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      with_items:
+        - /opt/nya/charts
+        - /opt/nya/charts/templates
+
+    - name: Copy Chart.yaml
+      copy:
+        src: "charts/Chart.yaml"
+        dest: /opt/nya/charts/Chart.yaml
+
+    - name: Copy deployment template
+      copy:
+        src: "charts/templates/deployment.yaml"
+        dest: /opt/nya/charts/templates/deployment.yaml
+
+    - name: Copy backend template
+      copy:
+        src: "charts/templates/backend.yaml"
+        dest: /opt/nya/charts/templates/backend.yaml
+
+    - name: Copy frontend template
+      copy:
+        src: "charts/templates/frontend.yaml"
+        dest: /opt/nya/charts/templates/frontend.yaml
+        
   # Add at the end of your playbook
   handlers:
     - name: Restart Bind9

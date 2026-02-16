@@ -1,0 +1,74 @@
+{{ define "nya.backend" }}
+---
+# Deployment spec
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .name }}
+spec:
+  replicas: {{ .replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ .name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .name }}
+    spec:
+      containers:
+        - name: {{ .name }}
+          image: "{{ .registry_host }}/{{ .image.name }}:{{ .image.tag | default "latest" }}"
+          imagePullPolicy: {{ .image.pullPolicy | default "Always" }}
+          ports:
+            - name: http
+              containerPort: {{ .service.targetPort | default 80 }}
+              protocol: TCP
+
+---
+# Service spec
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .name }}
+spec:
+  type: {{ .service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .service.port | default 80 }}
+      targetPort: {{ .service.targetPort | default 80 }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ .name }}
+
+---
+# Ingress spec
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .name }}
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ printf "%s.%s" .ingress.host .domain | quote }}
+      http: 
+        paths:
+          - path: {{ .ingress.path | default "/" }}
+            pathType: {{ .ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ .name }}
+                port:
+                  number: 80
+  {{- if .tls.enabled }}
+  tls:
+    - hosts:
+        - {{ printf "%s.%s" .ingress.host .domain | quote }}
+      secretName: {{ .tls.secretName | default "nya-tls-cert" }}
+  {{- end }}
+{{- end }}

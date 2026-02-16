@@ -74,7 +74,6 @@ pub fn new(capsule: Option<String>) {
   let pack_values_content = match pack_type {
     "frontend" => embedded::PACK_FRONTEND_VALUES_TEMPLATE,
     "backend" => embedded::PACK_BACKEND_VALUES_TEMPLATE,
-    "fullstack" => embedded::PACK_FULLSTACK_VALUES_TEMPLATE,
     _ => { 
       print!("There was an issue with getting the values for your pack. Please try again.");
       return;

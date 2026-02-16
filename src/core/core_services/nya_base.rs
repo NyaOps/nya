@@ -4,7 +4,7 @@ use anyhow::Error;
 use serde_json::{Value, to_string, to_string_pretty};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
 
-use crate::core::{payload::Payload, service::{handle_function, Service, ServiceRegister}};
+use crate::{core::{payload::Payload, service::{Service, ServiceRegister, handle_function}}, embedded::{NYA_BACKEND_TEMPLATE, NYA_CHART, NYA_DEPLOYMENT_TEMPLATE, NYA_FRONTEND_TEMPLATE}};
 use crate::runtime::nya::Nya;
 use crate::embedded::{get_playbook, get_base_template};
 use std::fs;
@@ -161,6 +161,14 @@ async fn run_playbook(content: &str, cmd_args: Vec<&str>, nya: Nya) -> Result<()
   ] {
     fs::write(temp_path.join(filename), content)?;
   }
+  
+  let charts_dir = temp_path.join("charts").join("templates");
+  fs::create_dir_all(&charts_dir)?;
+  
+  fs::write(temp_path.join("charts").join("Chart.yaml"), NYA_CHART)?;
+  fs::write(charts_dir.join("deployment.yaml"), NYA_DEPLOYMENT_TEMPLATE)?;
+  fs::write(charts_dir.join("backend.yaml"), NYA_BACKEND_TEMPLATE)?;
+  fs::write(charts_dir.join("frontend.yaml"), NYA_FRONTEND_TEMPLATE)?;
 
   let cp_dir = PathBuf::from("/tmp/ssh");
   fs::create_dir_all(&cp_dir)?;

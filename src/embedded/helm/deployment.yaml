@@ -1,0 +1,9 @@
+{{- range .Values.components }}
+{{- if eq .type "frontend" }}
+{{ template "nya.frontend" . }}
+{{- else if eq .type "backend" }}
+{{ template "nya.backend" . }}
+{{- else if eq .type "worker" }}
+{{ template "nya.worker" . }}
+{{ end }}
+{{ end }}
