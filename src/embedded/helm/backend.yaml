@@ -16,11 +16,13 @@ spec:
     metadata:
       labels:
         app: {{ printf "%s-api" .name }}
+      annotations:  # ← ADD THIS
+        deployedAt: "{{ .podAnnotations.deployedAt | default "0" }}"
     spec:
       containers:
         - name: {{ printf "%s-api" .name }}
           image: "{{ .registry_host }}/{{ .image.name }}:{{ .image.tag | default "latest" }}"
-          imagePullPolicy: {{ .image.pullPolicy | default "Always" }}
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: {{ .service.targetPort | default 80 }}
@@ -64,7 +66,7 @@ spec:
               service:
                 name: {{ printf "%s-api" .name }}
                 port:
-                  number: 80
+                  number: {{ .service.port | default 80 }}
   {{- if .tls.enabled }}
   tls:
     - hosts:

@@ -13,6 +13,12 @@
       "onDestroyControlPlane"
     ]
   },
+  "capsule:ship": {
+    "steps": [
+      "onBuildPacks",
+      "onDeployCapsule"
+    ]
+  },
   "test_cmd": {
     "steps": [
       "test_event",

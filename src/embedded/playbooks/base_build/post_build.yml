@@ -15,17 +15,26 @@
           environment:
             KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
+        - name: Add MetalLB repo
+          command: helm repo add metallb https://metallb.github.io/metallb
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+        - name: Install MetalLB
+          command: |
+            helm upgrade --install metallb metallb/metallb \
+              --namespace metallb-system \
+              --create-namespace
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
         - name: Install nginx-ingress
           command: |
             helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
               --namespace ingress-nginx \
               --create-namespace \
-              --set controller.service.type=NodePort \
-              --set controller.hostPort.enabled=true \
               --set controller.kind=DaemonSet \
-              --set controller.publishService.enabled=true
-          args:
-            creates: /var/lib/rancher/k3s/server/manifests/ingress-nginx.yaml
+              --set controller.service.type=LoadBalancer
           environment:
             KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
@@ -148,6 +157,12 @@
       copy:
         src: "charts/templates/frontend.yaml"
         dest: /opt/nya/charts/templates/frontend.yaml
+        
+    - name: Set k3s.yaml permissions for regular user
+      file:
+        path: /etc/rancher/k3s/k3s.yaml
+        mode: '0644'
+      become: yes
         
   # Add at the end of your playbook
   handlers:

@@ -1,9 +1,9 @@
 {{- range .Values.components }}
 {{- if eq .type "frontend" }}
-{{ template "nya.frontend" . }}
+{{ template "nya.frontend" (merge . (dict "domain" $.Values.domain "registry_host" $.Values.registry_host "secret_name" $.Values.secret_name "podAnnotations" $.Values.podAnnotations)) }}
 {{- else if eq .type "backend" }}
-{{ template "nya.backend" . }}
+{{ template "nya.backend" (merge . (dict "domain" $.Values.domain "registry_host" $.Values.registry_host "secret_name" $.Values.secret_name "podAnnotations" $.Values.podAnnotations)) }}
 {{- else if eq .type "worker" }}
-{{ template "nya.worker" . }}
-{{ end }}
-{{ end }}
+{{ template "nya.worker" (merge . (dict "domain" $.Values.domain "registry_host" $.Values.registry_host "secret_name" $.Values.secret_name "podAnnotations" $.Values.podAnnotations)) }}
+{{- end }}
+{{- end }}

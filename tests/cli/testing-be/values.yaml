@@ -6,8 +6,8 @@ components:
       name: testing-be
       tag: "latest"
     service:
-      port: 80
-      targetPort: 80
+      port: 3000
+      targetPort: 3000
     ingress:
       host: testing-be
     tls:

@@ -2,9 +2,10 @@ use std::{env::{self, temp_dir}, process::Stdio};
 
 use anyhow::Error;
 use serde_json::{Value, to_string, to_string_pretty};
+use tera::{Context, Tera};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
 
-use crate::{core::{payload::Payload, service::{Service, ServiceRegister, handle_function}}, embedded::{NYA_BACKEND_TEMPLATE, NYA_CHART, NYA_DEPLOYMENT_TEMPLATE, NYA_FRONTEND_TEMPLATE}};
+use crate::{core::{payload::Payload, service::{Service, ServiceRegister, handle_function}}, embedded::{self, NYA_BACKEND_TEMPLATE, NYA_CHART, NYA_DEPLOYMENT_TEMPLATE, NYA_FRONTEND_TEMPLATE}, utils::run_ssh};
 use crate::runtime::nya::Nya;
 use crate::embedded::{get_playbook, get_base_template};
 use std::fs;
@@ -46,6 +47,9 @@ async fn build_control_plane(nya: Nya, _: Payload) {
 }
 
 async fn run_post_build(nya: Nya, _: Payload) {
+  let _ = nya.trigger("log", Payload::new("Waiting for cluster to stabilize...".to_string())).await;
+  tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+
   _ = &nya.trigger("log", Payload::new("Running post build...".to_string())).await;
 
   let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
@@ -60,6 +64,67 @@ async fn run_post_build(nya: Nya, _: Payload) {
   } else {
       let _ = nya.trigger("log", Payload::new("Post build ran successfully.".to_string())).await;
   }
+
+  // Get control plane details
+    let base_vars = nya.get("nya.control_plane.vars").await;
+    let control_plane = nya.get("nya.control_plane").await["all"]["hosts"]["control_plane"].clone();
+    
+    let registry_host = base_vars["registry_host"].as_str().unwrap();
+    let control_plane_ip = registry_host.split(':').next().unwrap();
+    
+    let user = control_plane["ansible_user"].as_str().unwrap();
+    let ssh_key = control_plane["ansible_ssh_private_key_file"].as_str().unwrap();
+    let ssh_key = shellexpand::tilde(ssh_key).to_string();
+    
+    // Render templates
+    let mut tera = Tera::default();
+    tera.add_raw_template("ippool", embedded::METALLB_IP_POOL).unwrap();
+    tera.add_raw_template("l2adv", embedded::METALLB_L2ADV).unwrap();
+    
+    let mut context = Context::new();
+    context.insert("registry_host_ip", control_plane_ip);
+    
+    let ippool = tera.render("ippool", &context).unwrap();
+    let l2adv = tera.render("l2adv", &context).unwrap();
+
+
+    let _ = run_ssh(control_plane_ip, user, &ssh_key, "sudo chmod 644 /etc/rancher/k3s/k3s.yaml")
+        .await
+        .map_err(|e| format!("Failed to set kubeconfig permissions: {}", e)).unwrap();
+    
+    // Apply via kubectl
+    let kubectl_cmd = format!(
+        "kubectl apply -f - <<'EOF'
+{}
+---
+{}
+EOF",
+        ippool, l2adv
+    );
+    let _ = nya.trigger("log", Payload::new("Waiting for MetalLB to be ready...".to_string())).await;
+    
+    // Wait for MetalLB webhook to be available
+    tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+    
+    let _ = nya.trigger("log", Payload::new("Configuring MetalLB...".to_string())).await;
+    
+    // Apply config with retry
+    for attempt in 1..=3 {
+        match run_ssh(control_plane_ip, user, &ssh_key, &kubectl_cmd).await {
+            Ok(_) => {
+                let _ = nya.trigger("log", Payload::new("MetalLB configured successfully".to_string())).await;
+            }
+            Err(_) if attempt < 3 => {
+                let _ = nya.trigger("log", Payload::new(
+                    format!("MetalLB config failed (attempt {}/3), retrying in 20s...", attempt)
+                )).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+            }
+            Err(e) => {
+                let _ = nya.trigger("log", Payload::new(format!("Failed to configure MetalLB after 3 attempts: {}", e))).await;
+            }
+        }
+    }
 }
 
 async fn build_nodes (nya: Nya, _: Payload) {
@@ -202,44 +267,44 @@ async fn run_playbook(content: &str, cmd_args: Vec<&str>, nya: Nya) -> Result<()
 
   let mut child = cmd.spawn()?;
 
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
+  let stdout = child.stdout.take().unwrap();
+  let stderr = child.stderr.take().unwrap();
 
-    let mut out_reader = BufReader::new(stdout).lines();
-    let mut err_reader = BufReader::new(stderr).lines();
+  let mut out_reader = BufReader::new(stdout).lines();
+  let mut err_reader = BufReader::new(stderr).lines();
 
-    // Pump stdout
-    let out_task = tokio::spawn({
-        let nya = nya.clone();
-        async move {
-            while let Ok(Some(line)) = out_reader.next_line().await {
-              if let Some(caps) = token_pattern.captures(&line) {
-                  let token = caps.name("token").unwrap().as_str().to_string();
-                  nya.set("k3s_node_token", token.clone()).await;
-              }
+  // Pump stdout
+  let out_task = tokio::spawn({
+      let nya = nya.clone();
+      async move {
+          while let Ok(Some(line)) = out_reader.next_line().await {
+            if let Some(caps) = token_pattern.captures(&line) {
+                let token = caps.name("token").unwrap().as_str().to_string();
+                nya.set("k3s_node_token", token.clone()).await;
+            }
+            let _ = nya.trigger("log", Payload::new(line.clone())).await;
+          }
+      }
+  });
+
+  // Pump stderr
+  let err_task = tokio::spawn({
+      let nya = nya.clone();
+      async move {
+          while let Ok(Some(line)) = err_reader.next_line().await {
               let _ = nya.trigger("log", Payload::new(line.clone())).await;
-            }
-        }
-    });
+          }
+      }
+  });
 
-    // Pump stderr
-    let err_task = tokio::spawn({
-        let nya = nya.clone();
-        async move {
-            while let Ok(Some(line)) = err_reader.next_line().await {
-                let _ = nya.trigger("log", Payload::new(line.clone())).await;
-            }
-        }
-    });
+  let status = child.wait().await?;
 
-    let status = child.wait().await?;
+  let _ = out_task.await;
+  let _ = err_task.await;
 
-    let _ = out_task.await;
-    let _ = err_task.await;
-
-    if !status.success() {
-        anyhow::bail!("ansible-playbook failed with {}", status);
-    }
+  if !status.success() {
+      anyhow::bail!("ansible-playbook failed with {}", status);
+  }
   Ok(())
 }
 

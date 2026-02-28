@@ -1,6 +1,5 @@
-FROM --platform=linux/arm64 (add image name here)
+FROM --platform=linux/amd64 oven/bun:slim
 WORKDIR /src
 COPY . .
-RUN (add install command here)
-# CMD (add command here) OR use ENTRYPOINT
-ENTRYPOINT (add entrypoint here)
+RUN bun install --frozen-lockfile
+CMD [ "bun", "run", "index.js" ]

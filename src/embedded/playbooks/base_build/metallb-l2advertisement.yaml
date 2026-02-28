@@ -1,0 +1,9 @@
+# embedded/metallb/l2advertisement.yaml
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: nya-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - nya-pool

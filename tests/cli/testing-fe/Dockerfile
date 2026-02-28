@@ -1,6 +1,4 @@
-FROM --platform=linux/arm64 (add image name here)
-WORKDIR /src
-COPY . .
-RUN (add install command here)
-# CMD (add command here) OR use ENTRYPOINT
-ENTRYPOINT (add entrypoint here)
+FROM --platform=linux/amd64 nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

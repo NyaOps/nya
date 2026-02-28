@@ -1,4 +1,4 @@
-use crate::{core::{payload::{Get, Payload}, service::{handle_function, Service, ServiceRegister}, core_services::nya_base::NyaBase}};
+use crate::core::{core_services::{nya_base::NyaBase, nya_ship::NyaShip}, payload::{Get, Payload}, service::{Service, ServiceRegister, handle_function}};
 use crate::runtime::nya::Nya;
 
 pub struct NyaCore;
@@ -29,5 +29,6 @@ pub fn get_core_services() -> Vec<Box<dyn Service>> {
   vec![
     Box::new(NyaCore),
     Box::new(NyaBase),
+    Box::new(NyaShip)
   ]
 }

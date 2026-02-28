@@ -1,4 +1,4 @@
-{{ define "nya.backend" }}
+{{ define "nya.frontend" }}
 ---
 # Deployment spec
 apiVersion: apps/v1
@@ -16,11 +16,13 @@ spec:
     metadata:
       labels:
         app: {{ .name }}
+      annotations:
+        deployedAt: "{{ .podAnnotations.deployedAt | default "0" }}"
     spec:
       containers:
         - name: {{ .name }}
           image: "{{ .registry_host }}/{{ .image.name }}:{{ .image.tag | default "latest" }}"
-          imagePullPolicy: {{ .image.pullPolicy | default "Always" }}
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: {{ .service.targetPort | default 80 }}

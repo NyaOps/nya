@@ -1,15 +1,10 @@
 mod args;
 
-use args::{Cli, Commands, BaseCommands};
+use args::{Cli, Commands, BaseCommands, CapsuleCommands, PackCommands };
 use clap::Parser;
 use nya::cli::{
-  init, 
-  base, 
-  capsule,
-  pack
+  base, capsule, init, pack, ship
 };
-
-use crate::args::CapsuleCommands;
 
 #[tokio::main]
 async fn main() {
@@ -22,12 +17,11 @@ async fn main() {
       BaseCommands::Destroy { config }=> { base::destroy(config).await }
     },
     Commands::Capsule { command } => match command {
-      CapsuleCommands::New { config } => { capsule::new(config) },
-      CapsuleCommands::Check { config } => { capsule::check(config) }
-      CapsuleCommands::List { config } => {  }
+      CapsuleCommands::New { config } => { capsule::new(config) }
     },
     Commands::Pack { command } => match command {
-      args::PackCommands::New { capsule } => { pack::new(capsule) },
-    }
+      PackCommands::New { capsule } => { pack::new(capsule) },
+    },
+    Commands::Ship { config, location } => { ship::run(config, location).await },
   }
 }

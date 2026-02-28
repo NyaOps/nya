@@ -7,7 +7,6 @@ pub const PACK_FRONTEND_VALUES_TEMPLATE: &str = include_str!("embedded/templates
 pub const PACK_BACKEND_VALUES_TEMPLATE: &str = include_str!("embedded/templates/pack/values.backend.yaml");
 pub const PACK_FULLSTACK_VALUES_TEMPLATE: &str = include_str!("embedded/templates/pack/values.fullstack.yaml");
 
-
 // Templates
 pub const BIND9_DB: &str = include_str!("embedded/templates/base_build/bind9.db.j2");
 pub const NAMED_CONF_LOCAL: &str = include_str!("embedded/templates/base_build/named.conf.local.j2");
@@ -27,6 +26,10 @@ pub const NYA_CHART: &str = include_str!("embedded/helm/Chart.yaml");
 pub const NYA_DEPLOYMENT_TEMPLATE: &str = include_str!("embedded/helm/deployment.yaml");
 pub const NYA_BACKEND_TEMPLATE: &str = include_str!("embedded/helm/backend.yaml");
 pub const NYA_FRONTEND_TEMPLATE: &str = include_str!("embedded/helm/frontend.yaml");
+
+//MetalLB
+pub const METALLB_IP_POOL: &str = include_str!("embedded/playbooks/base_build/metallb-ipaddresspool.yaml");
+pub const METALLB_L2ADV: &str = include_str!("embedded/playbooks/base_build/metallb-l2advertisement.yaml");
 
 pub fn get_playbook(name: &str) -> Option<&'static str> {
     match name {

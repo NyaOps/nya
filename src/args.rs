@@ -30,6 +30,14 @@ pub enum Commands {
     #[command(subcommand)]
     command: PackCommands,
   },
+  
+  Ship {
+    #[arg(short, long)]
+    config: Option<String>,
+
+    #[arg(short, long)]
+    location: Option<String>,
+  },
 }
 
 #[derive(Subcommand, Debug)]
@@ -46,17 +54,7 @@ pub enum BaseCommands {
 
 #[derive(Subcommand, Debug)]
 pub enum CapsuleCommands {
-  Check {
-    #[arg(short, long)]
-    config: Option<String>,
-  },
-
   New {
-    #[arg(short, long)]
-    config: Option<String>,
-  },
-
-  List {
     #[arg(short, long)]
     config: Option<String>,
   },
