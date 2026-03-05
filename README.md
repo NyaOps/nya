@@ -218,5 +218,4 @@ Nya is in active development. Planned for future releases:
 - Coomunity driven plugin ecosystem - allow all users and entities to provide their own Nya plugins and extend Nya's capabilities. 
 - Decentralized infrastructure platform - empower creators with open-source alternatives to extractive platforms, fair pricing models, and tools that put control back in users' hands.
 
-
 Want to contribute? Check out [CONTRIBUTING.md] open an issue!
