@@ -114,11 +114,13 @@ nya base destroy
 ### Create Capsule
 
 Once your base has been completed, navigate to your application. Create a new capsule by running
+
 ```bash
 nya capsule new 
 ```
 
-Give the capsule a name, and it will create the capsule's config. You can provide a custom location using `-c` or `--config`. 
+Give the capsule a name, and it will create the capsule's config. You can provide a custom location using `-c` or `--config`
+
 ```bash
 > What do you want to call this capsule? test
 Created new Capsule file at: /Users/_user_/.../test/.nya/nya.json
