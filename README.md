@@ -38,7 +38,7 @@ There are a few terms that are referred to when using Nya:
 
 ## Getting Started
 
-Before using Nya, it's highly reccommended that your public SSH key is copied to your servers. Skipping this step can cause issues. 
+Before using Nya, it's highly recommended that your public SSH key is copied to your servers. Skipping this step can cause issues. 
 
 **Install Nya:**
 ```bash
@@ -90,7 +90,7 @@ Update the base config that corresponds with your infrastructure. If you have mo
           "ansible_user": "username",
           "ansible_ssh_private_key_file": "~/keyfile"
         },
-        "worker22": {
+        "worker2": {
           "ansible_host": "host",
           "ansible_user": "username",
           "ansible_ssh_private_key_file": "~/keyfile"
@@ -105,7 +105,7 @@ Once you've completed updating the base config, run
 ```bash 
 nya base build
 ``` 
-This setups the platform. Provide the config with `-c` or `--config` if you provided a custom location. This should take a few minutes to complete. 
+This sets up the platform. Provide the config with `-c` or `--config` if you provided a custom location. This should take a few minutes to complete. 
 If you run into issues and wish to start over, or simply want to remove Nya from your servers, run 
 ```bash
 nya base destroy
@@ -132,17 +132,19 @@ You can now create packs that will be managed by the capsule. Run
 ```bash
 nya pack new 
 ```
-Give the pack a name and select what type of application the pack will be. If you selected a custom location for your capsule, you can provide it with `-c` or `--capsule``. You should now see a new directory created with the name of your pack. The directory should include a `Dockerfile` and a `values.yaml` file.
+Give the pack a name and select what type of application the pack will be. If you selected a custom location for your capsule, you can provide it with `-c` or `--capsule`. 
+
+You should now see a new directory created with the name of your pack. The directory should include a `Dockerfile` and a `values.yaml` file.
 ```bash
 ✓ Created pack: test-pack
 Location: /Users/_user_/.../test/test-pack
 Edit your Dockerfile, then run: nya pack deploy
 ```
-> Note: Wherever you place your capsule, the expectation is that the capsule will be the parent directory of all of it's packs. If you decide to place the pack files in a different place, you'll have to manage the location yourself in the `nya.json` file. 
+> Note: Wherever you place your capsule, the expectation is that the capsule will be the parent directory of all of its packs. If you decide to place the pack files in a different place, you'll have to manage the location yourself in the `nya.json` file. 
 
 **Prepare Packs:**
 
-Once you've created your pack, add everything you need for your application. Update the Dockerfile to builkd your container for your application. Make sure you've tested the container locally. 
+Once you've created your pack, add everything you need for your application. Update the Dockerfile to build your container for your application. Make sure you've tested the container locally. 
 
 ### Ship It!
 
@@ -214,10 +216,10 @@ Nya is in active development. Planned for future releases:
 - Multi-architecture support (mixed x86_64/ARM clusters)
 
 **v0.5:**
-- Plugin system  (extend Nya with custom functionality)
+- Plugin system (extend Nya with custom functionality)
 
 **Long Term Vision**
-- Coomunity driven plugin ecosystem - allow all users and entities to provide their own Nya plugins and extend Nya's capabilities. 
+- Community driven plugin ecosystem - allow all users and entities to provide their own Nya plugins and extend Nya's capabilities. 
 - Decentralized infrastructure platform - empower creators with open-source alternatives to extractive platforms, fair pricing models, and tools that put control back in users' hands.
 
-Want to contribute? Check out [CONTRIBUTING.md] open an issue!
+Want to contribute? Check out [CONTRIBUTING.md](CONTRIBUTING.md) or open an issue!
