@@ -1,7 +1,17 @@
 [package]
 name = "nya"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 edition = "2024"
+authors = ["Christopher Smith <input@cybrsmth.com>"]
+license = "Apache-2.0"
+description = "Self-hosted PaaS for deploying apps to your own servers"
+repository = "https://github.com/NyaOps/nya"
+keywords = ["paas", "kubernetes", "self-hosted", "deployment", "homelab"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "nya"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.100"
