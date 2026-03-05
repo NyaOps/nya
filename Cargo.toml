@@ -1,7 +1,7 @@
 [package]
 name = "nya_cloud"
 version = "0.1.0-alpha.1"
-edition = "2024"
+edition = "2021"
 authors = ["Christopher Smith <input@cybrsmth.com>"]
 license = "Apache-2.0"
 description = "Self-hosted PaaS for deploying apps to your own servers"
