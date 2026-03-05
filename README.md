@@ -43,7 +43,7 @@ There are a few terms that are referred to when using Nya:
 
 **Install Nya:**
 ```bash
-cargo install nya-cloud
+cargo install nya_cloud
 ```
 
 **Configure Docker for insecure registry:**
