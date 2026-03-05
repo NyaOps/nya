@@ -157,7 +157,17 @@
       copy:
         src: "charts/templates/frontend.yaml"
         dest: /opt/nya/charts/templates/frontend.yaml
-        
+    
+    - name: Restart K3s to load registry config  
+      systemd:
+        name: k3s
+        state: restarted
+
+    - name: Wait for K3s to be ready after restart
+      wait_for:
+        timeout: 30
+        delay: 5
+
     - name: Set k3s.yaml permissions for regular user
       file:
         path: /etc/rancher/k3s/k3s.yaml

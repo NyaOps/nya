@@ -1,0 +1,25 @@
+{
+  "capsule": {
+    "name": "delete",
+    "created_at": "2026-03-05T03:12:12.385370+00:00",
+    "updated_at": "2026-03-05T03:22:31.976619+00:00",
+    "packs": [
+      {
+        "name": "delete-me",
+        "pack_type": "frontend",
+        "location": "delete-me",
+        "created_at": "2026-03-05T03:16:20.499776+00:00",
+        "updated_at": "2026-03-05T03:16:20.500190+00:00",
+        "port": null
+      },
+      {
+        "name": "testing",
+        "pack_type": "frontend",
+        "location": "testing",
+        "created_at": "2026-03-05T03:22:31.971766+00:00",
+        "updated_at": "2026-03-05T03:22:31.972079+00:00",
+        "port": null
+      }
+    ]
+  }
+}

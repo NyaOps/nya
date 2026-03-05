@@ -3,6 +3,33 @@
   become: yes
   
   tasks:
+    - name: Kill ALL k3s processes (including agents)
+      shell: |
+        killall -9 k3s || true
+        killall -9 k3s-agent || true
+        killall -9 k3s-server || true
+        killall -9 containerd || true
+        killall -9 containerd-shim || true
+      ignore_errors: yes
+
+    - name: Stop ALL k3s services
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+      loop:
+        - k3s
+        - k3s-agent
+      ignore_errors: yes
+
+    - name: Disable ALL k3s services
+      systemd:
+        name: "{{ item }}"
+        enabled: no
+      loop:
+        - k3s
+        - k3s-agent
+      ignore_errors: yes
+
     - name: Stop K3s agent service
       systemd:
         name: k3s-agent
@@ -69,3 +96,22 @@
       apt:
         autoclean: yes
         autoremove: yes
+    
+    - name: Clear systemd failed units
+      shell: systemctl reset-failed
+      ignore_errors: yes
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Clear apt locks
+      shell: |
+        rm -f /var/lib/apt/lists/lock
+        rm -f /var/cache/apt/archives/lock
+        rm -f /var/lib/dpkg/lock*
+      ignore_errors: yes
+
+    - name: Reboot to ensure clean state
+      reboot:
+        reboot_timeout: 300

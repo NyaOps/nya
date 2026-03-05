@@ -55,7 +55,7 @@
 
     - name: Add Docker repository
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+        repo: "deb https://download.docker.com/linux/ubuntu noble stable"
         state: present
 
     - name: Install Docker
@@ -113,7 +113,6 @@
     - name: Install K3S
       shell: |
         curl -sfL https://get.k3s.io | INSTALL_K3S_TOKEN={{ k3s_token }} sh -s - server \
-          --cluster-init \
           --disable traefik \
           --disable servicelb \
           --disable local-storage \

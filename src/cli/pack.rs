@@ -52,7 +52,7 @@ pub fn new(capsule: Option<String>) {
 
   let pack_type = match Select::new(
       "What type of pack?",
-      vec!["fullstack", "frontend", "backend"]
+      vec!["frontend", "backend"]
   ).prompt() {
       Ok(t) => t,
       Err(_) => return,

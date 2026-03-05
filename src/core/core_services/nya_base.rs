@@ -113,6 +113,7 @@ EOF",
         match run_ssh(control_plane_ip, user, &ssh_key, &kubectl_cmd).await {
             Ok(_) => {
                 let _ = nya.trigger("log", Payload::new("MetalLB configured successfully".to_string())).await;
+                break;
             }
             Err(_) if attempt < 3 => {
                 let _ = nya.trigger("log", Payload::new(

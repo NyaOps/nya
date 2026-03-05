@@ -1,271 +1,222 @@
-# 🌌 Nya 
+Nya is a free, open-source, portable and self-hostable PaaS. Deploy your apps to your own servers easily without worrying about cloud or vendor lock-in. Anything you can access via SSH can be a part of your platform. Production-ready features of Nya include:
 
-Nya is an open-source CLI, application framework and toolkit for building self-hosted, container-based PaaS using a bring-your-own-compute model. It wraps around Rancher K3s, BIND9, Docker, and Helm to provide an opinionated but extensible developer experience. At the same time, Nya opts to remain neutral and modular in its operation. Whether you're working on a brand new startup idea, or spinning up a new testing environment in an enterprise company, Nya can always be an option without being a boundary. 
+- Automatic Kubernetes cluster setup
+- Private Docker registry
+- HTTPS and DNS Management
+- Single command deployments
+- A simple application framework
 
----
+## Prerequisites 
 
-## 🚀 Overview
+**What you need:**
+- One or more servers (VPS, bare metal, homelab - anything with Ubuntu 24.04)
+- SSH access to your servers
+- Docker installed locally (for building images)
+- Rust/Cargo installed: https://rustup.rs
 
-Nya allows developers to:
+You'll also need to have the following tools installed on your machine:
 
-- Scaffold Kubernetes-ready apps using a capsule/pack abstraction
-- Automate deployments with Helm and K3s
-- Set up infrastructure (DNS, registry, TLS, DB) via Ansible
-- Extend the platform through schema-driven configs and event-driven modules
+- [Ansible](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html)
+- [Docker](https://docs.docker.com/desktop/)
 
----
+**Copy SSH keys to servers (one-time setup):**
+```bash
+ssh-add ~/.ssh/your_key
+ssh-copy-id user@server-ip
+```
 
-## 🧩 Core Concepts
+Perform this for every server that you're planning on using in the platform. Once you've completed this once, you shouldn't have to do it again. 
 
-### Base
+### Concepts
 
-`coming soon` 
+There are a few terms that are referred to when using Nya: 
 
+- **Base**: The application hosting apparatus of the platform. This is where Nya will run and host your applications. More technically, this is your Kubernetes cluster. 
+- **Base Config**: The file responsible for holding the configuration of the base. 
+- **Capsule**: A group of related applications that are managed and deployed together. For example: a monorepo. 
+- **Pack**: A single deployable application. For example: a React SPA or Flask API. 
 
-### 🧪 Capsule
+## Getting Started
 
-A **Capsule** is a collection of deployable components (packs). It represents a full application group.
+Before using Nya, it's highly reccommended that your public SSH key is copied to your servers. Skipping this step can cause issues. 
 
-Example:
+**Install Nya:**
+```bash
+cargo install nya
+```
 
+**Configure Docker for insecure registry:**
+
+On your local machine, add your control plane IP to Docker's insecure registries:
+
+*Mac/Windows (Docker Desktop):*
+Settings → Docker Engine → Add to JSON:
 ```json
 {
-  "name": "my-capsule",
-  "packs": [
-    { "name": "frontend", "type": "frontend", "dir": "./frontend" },
-    { "name": "api", "type": "backend", "dir": "./api" }
-  ]
+  "insecure-registries": ["YOUR_CONTROL_PLANE_IP:5000"]
 }
 ```
 
-### 📦 Pack
-
-A **Pack** is a single deployable unit, like a frontend app, backend service, worker, or job.
-
-Pack types:
-- `frontend`
-- `backend`
-- `fullstack`
-- `job`
-- `worker`
-
-## 🧱 Platform Architecture
-```mermaid
-graph TD
-  CLI[Nya CLI]
-  Core[Event Bus & Orchestrator]
-  Scaffold[Scaffold Engine]
-  K3s[K3s + Helm/Kubernetes Layer]
-  DNS[BIND9 + cert-manager]
-  CI[CI/CD Integration]
-  CapsuleFS[Capsule File Structure]
-
-  CLI --> Core
-  Core --> Scaffold
-  Core --> K3s
-  Core --> DNS
-  Core --> CI
-  CLI --> CapsuleFS
-
+*Linux:*
+```bash
+sudo nano /etc/docker/daemon.json
+# Add the same JSON config
+sudo systemctl restart docker
 ```
 
-## 🛠️ CLI Tasks
+### Create the Base:
 
-### `Nya create`
+First we need to create the Nya Base Config:
 
-Create capsule or pack file structure with:
-
-- `values.yaml`
-- `Dockerfile`
-- `Jenkinsfile`
-- `Nya.json`
-
-Supports application types: `frontend`, `backend`, `fullstack`, `job`, `worker`.
-
-### `Nya up`
-
-Deploy a capsule via Helm:
-
-```sh
-sudo helm upgrade --install <capsule-name> <path> --kubeconfig /etc/rancher/k3s/k3s.yaml
+``` bash
+nya init
 ```
 
-### `Nya down`
+This creates a new base config at `~/.nya/nya_base_config.json` by default. If you'd wish for the base config to be created in a specific location, you can add the `-o` or `--output` flag and provide a path.
 
-Tear down capsule:
-```sh
-sudo helm uninstall <capsule-name> --kubeconfig /etc/rancher/k3s/k3s.yaml
+```bash
+Created Nya base config template
+Location: /Users/_user_/.nya/nya_base_config.json
+
+Next steps:
+1. Edit the config file and fill in your infrastructure details
+2. Run: nya base build
+```
+Update the base config that corresponds with your infrastructure. If you have more than one worker node, you can add another object: 
+```json
+      "hosts": {
+        "worker1": {
+          "ansible_host": "host",
+          "ansible_user": "username",
+          "ansible_ssh_private_key_file": "~/keyfile"
+        },
+        "worker22": {
+          "ansible_host": "host",
+          "ansible_user": "username",
+          "ansible_ssh_private_key_file": "~/keyfile"
+        }
+        ...
+      }
 ```
 
-### `Nya status`
+**Build the Base**: 
 
-Get current state of deployed applications and capsule metadata.
-
-### `Nya deploy-cloud`
-
-Provision entire cluster stack with Ansible:
-
-- K3s setup
-- Private Docker Registry
-- PostgreSQL database
-- cert-manager
-- BIND9 DNS
-
-## 🔌 Internal Modules
-
-| Module            | Purpose                                   |
-| ----------------- | ----------------------------------------- |
-| `scaffold-engine` | File + structure generator                |
-| `helm-runner`     | Abstracts Helm calls                      |
-| `k3s-manager`     | Controls K3s context switching, detection |
-| `dns-integrator`  | Handles BIND9 and DNS automation          |
-| `capsule-loader`  | Parses capsule + pack definitions         |
-| `event-bus`       | Decouples command logic via subscriptions |
-
-## 📐 Schema Usage
-
-Nya uses schema files (`Nya.json`) to:
-
-- Define capsule/pack structure
-- Configure build and deployment metadata
-- Match events to handlers dynamically
-- Enable WYSIWYG generation and validation
-
-## 🌍 Example Deployment
-
-```yaml
-components:
-  - name: "fooapp"
-    type: "frontend"
-    image:
-      name: "fooapp-frontend"
-      tag: "1.0.0"
-    service:
-      port: 80
-    ingress:
-      host: "fooapp"
-
-  - name: "fooapp-api"
-    type: "backend"
-    image:
-      name: "fooapp-backend"
-      tag: "1.0.0"
-    service:
-      port: 80
-      targetPort: 8080
-    ingress:
-      host: "fooapp-api"
-
-```
-```sh
-helm install fooapp ./helm -n apps -f custom-values.yaml
+Once you've completed updating the base config, run 
+```bash 
+nya base build
+``` 
+This setups the platform. Provide the config with `-c` or `--config` if you provided a custom location. This should take a few minutes to complete. 
+If you run into issues and wish to start over, or simply want to remove Nya from your servers, run 
+```bash
+nya base destroy
 ```
 
-## 🧠 Event Bus Design (JS Concept)
+### Create Capsule
 
-The event bus acts as a decoupled message router:
-```ts
-bus.on("capsule:deploy", (payload) => deployCapsule(payload))
-bus.emit("capsule:deploy", { name: "my-capsule" })
+Once your base has been completed, navigate to your application. Create a new capsule by running
+```bash
+nya capsule new 
 ```
 
-Benefits:
+Give the capsule a name, and it will create the capsule's config. You can provide a custom location using `-c` or `--config`. 
+```bash
+> What do you want to call this capsule? test
+Created new Capsule file at: /Users/_user_/.../test/.nya/nya.json
+```
 
-- Decouples orchestration logic
-- Enables parallelization and plugin support
-- Supports sync or async handlers
-- Easy to extend with lifecycle events
+**Create Packs:**
 
-## 🛤️ Roadmap
-- Add schema validation and testing
-- Create plugin system for pack types
-- Build local dashboard view (optional)
-- Add remote deploy target support
-- Add typed event payloads or schemas
+You can now create packs that will be managed by the capsule. Run
+```bash
+nya pack new 
+```
+Give the pack a name and select what type of application the pack will be. If you selected a custom location for your capsule, you can provide it with `-c` or `--capsule``. You should now see a new directory created with the name of your pack. The directory should include a `Dockerfile` and a `values.yaml` file.
+```bash
+✓ Created pack: test-pack
+Location: /Users/_user_/.../test/test-pack
+Edit your Dockerfile, then run: nya pack deploy
+```
+> Note: Wherever you place your capsule, the expectation is that the capsule will be the parent directory of all of it's packs. If you decide to place the pack files in a different place, you'll have to manage the location yourself in the `nya.json` file. 
 
-## 🧪 Testing Strategy
+**Prepare Packs:**
 
-- Unit tests for core modules (use `bun:test`)
-- Snapshot tests for scaffolded files
-- Integration tests for `helm`, `k3s`, `dns`
-- Use native `assert` for runtime validation
+Once you've created your pack, add everything you need for your application. Update the Dockerfile to builkd your container for your application. Make sure you've tested the container locally. 
 
-## 🎯 Vision
+### Ship It!
 
-Nya aims to make self-hosted container infrastructure:
+Once you've prepared your capsule and packs, and have verified that your containers are working as expected, run 
+```bash
+nya ship
+```
+to automatically deploy the capsule to the platform. If either your base config or your capsule are in custom locations, you can provide `-c` or `--config` for your base config's path, and `-l` or `--location` for your capsule's location. 
 
-- **Accessible**: No need to manage cloud vendors
-- **Opinionated**: Best practices baked in
-- **Extensible**: Developers can extend via schema + events
-- **Efficient**: Smooth local development to production path
-# Nya CLI Implementation Details
+Your applications have now been successfully deployed to the Nya platform! 
 
-## Commands
+### Accessing the Applications
 
-1. `Nya create base`  
-   Builds the Nya base:
-   - Rancher K3s  
-   - Docker Registry  
-   - Helm  
-   - BIND9  
-   - All base configurations  
-   - Spawns platform UI  
-   - Spawns monitoring service
+The Nya base handles DNS for the platform as well, it's just a matter of directing requests to it. 
 
-2. `Nya create capsule|pack`  
-   Application configuration scaffolding.  
-   - Creates a new capsule or pack.
+**For local access**
 
-3. `Nya ship`  
-   - Builds application containers from capsule using Docker.  
-   - Pushes to the Docker registry.
+Navigate to your router or modem and update the Primary DNS to point to your control plane's IP address. 
 
-4. `Nya up|down`  
-   - Spins up/down application in the cluster.
+Then, you should be able to access your applications from the browser.
 
-5. `Nya status`  
-   - Gathers status on base and applications.
----
-## `Nya create base`
+Frontend: `https://{your pack's name}.{your_domain_name}`
 
-1. **Get cluster info from user**  
-   - Must have control plane and node  
-   - Can be the same machine  
-   - Must choose a dedicated domain for DNS
+Backend: `https://{your pack's name}-api.{your_domain_name}`
 
-2. **Using Ansible scripts, SSH into base and install/configure**:
-   - Rancher K3s  
-   - Docker w/ registry  
-   - Helm  
-   - NGINX ingress  
-   - BIND9  
-   - mkcert or Let's Encrypt
+**To make apps accessible from anywhere**
 
-3. **Validate cluster**
+**Option 1: Cloudflare Tunnel (Recommended)**
+- No port forwarding needed
+- Free TLS certificates
 
-4. **Spin up monitoring UI**
+[Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)
 
----
-## `Nya create capsule|pack`
+**Option 2: Port Forwarding**
+1. Forward ports 80/443 on your router → control plane IP
+2. Point your domain's A record to your public IP
+3. Apps accessible at `https://app.yourdomain.com`
 
-1. **Get name of application from user**  
-   - Also get application type from user.
+## Known Limitations
 
-2. **Scaffold new application files**
+- **Architecture**: All nodes must be same architecture (all x86_64 OR all ARM64)
+  - There is currently no ARM support, but it is on the roadmap
+- **OS**: Ubuntu 24.04 required on all nodes
+- **Certificates**: Uses self-signed certs (warnings for public access without Cloudflare)
 
----
+## Troubleshooting
 
-## `Nya ship`
 
-1. **Verify contents in capsule**  
-   - Verify `Dockerfile`, descriptors, etc.
-1. **Run Docker to build Docker components**
-2. **Tag and push containers to cluster**
-3. **Rotate out applications**
----
-## `Nya up|down`
-1. **Run Helm** to spin up / tear down apps
----
-## `Nya status`
 
-`coming soon`
+## What's Next?
+
+Nya is in active development. Planned for future releases:
+
+**v0.2:**
+- Replace Ansible with direct SSH
+- Multi-OS support (Ubuntu + Debian)
+- ARM support
+- Local Nya observation tooling
+
+**v0.3:**
+- Better update reliability (SHA-based image tagging)
+- Status/monitoring commands (`nya status`, `nya logs`)
+- Single pack deployments (`nya pack deploy`)
+- Nya library released (use Nya's event-driven paradigm in your own projects)
+
+**v0.4:**
+- Web dashboard
+- Let's Encrypt integration (real TLS certificates)
+- Multi-architecture support (mixed x86_64/ARM clusters)
+
+**v0.5:**
+- Plugin system  (extend Nya with custom functionality)
+
+**Long Term Vision**
+- Coomunity driven plugin ecosystem - allow all users and entities to provide their own Nya plugins and extend Nya's capabilities. 
+- Decentralized infrastructure platform - empower creators with open-source alternatives to extractive platforms, fair pricing models, and tools that put control back in users' hands.
+
+
+Want to contribute? Check out [CONTRIBUTING.md] open an issue!
