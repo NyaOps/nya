@@ -789,7 +789,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nya"
+name = "nya-cloud"
 version = "0.1.0-alpha.1"
 dependencies = [
  "anyhow",

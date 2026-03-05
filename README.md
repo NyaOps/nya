@@ -19,7 +19,10 @@ You'll also need to have the following tools installed on your machine:
 - [Ansible](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html)
 - [Docker](https://docs.docker.com/desktop/)
 
+
 **Copy SSH keys to servers (one-time setup):**
+
+Before using Nya, it's highly recommended that your public SSH key is copied to your servers. Skipping this step can cause issues. 
 ```bash
 ssh-add ~/.ssh/your_key
 ssh-copy-id user@server-ip
@@ -38,11 +41,9 @@ There are a few terms that are referred to when using Nya:
 
 ## Getting Started
 
-Before using Nya, it's highly recommended that your public SSH key is copied to your servers. Skipping this step can cause issues. 
-
 **Install Nya:**
 ```bash
-cargo install nya
+cargo install nya-cloud
 ```
 
 **Configure Docker for insecure registry:**
