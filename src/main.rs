@@ -2,7 +2,7 @@ mod args;
 
 use args::{Cli, Commands, BaseCommands, CapsuleCommands, PackCommands };
 use clap::Parser;
-use nya::cli::{
+use nya_cloud::cli::{
   base, capsule, init, pack, ship
 };
 
