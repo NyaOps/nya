@@ -111,7 +111,3 @@
         rm -f /var/cache/apt/archives/lock
         rm -f /var/lib/dpkg/lock*
       ignore_errors: yes
-
-    - name: Reboot to ensure clean state
-      reboot:
-        reboot_timeout: 300

@@ -172,7 +172,3 @@
       ignore_errors: yes
       retries: 3
       delay: 5
-
-    - name: Reboot to ensure clean state
-      reboot:
-        reboot_timeout: 300
