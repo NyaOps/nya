@@ -246,6 +246,7 @@ async fn run_playbook(content: &str, cmd_args: Vec<&str>, nya: Nya) -> Result<()
                 let token = caps.name("token").unwrap().as_str().to_string();
                 nya.set("k3s_node_token", token.clone()).await;
             }
+              let _ = nya.trigger("log", Payload::new(line.clone())).await;
           }
       }
   });
