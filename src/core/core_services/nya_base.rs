@@ -30,8 +30,6 @@ impl Service for NyaBase {
 }
 
 async fn build_control_plane(nya: Nya, _: Payload) {
-  _ = &nya.trigger("log", Payload::new("Building control plane...".to_string())).await;
-
   let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
 
   let nya_vars_value = nya.get("nya.control_plane.vars").await;
@@ -41,17 +39,11 @@ async fn build_control_plane(nya: Nya, _: Payload) {
   let args = vec!["-i", &temp_path_str, "-e", &vars_json];
   if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
-  } else {
-      let _ = nya.trigger("log", Payload::new("Control plane built successfully.".to_string())).await;
   }
 }
 
 async fn run_post_build(nya: Nya, _: Payload) {
-  let _ = nya.trigger("log", Payload::new("Waiting for cluster to stabilize...".to_string())).await;
   tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-
-  _ = &nya.trigger("log", Payload::new("Running post build...".to_string())).await;
-
   let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
 
   let nya_vars_value = nya.get("nya.control_plane.vars").await;
@@ -61,76 +53,61 @@ async fn run_post_build(nya: Nya, _: Payload) {
   let args = vec!["-i", &temp_path_str, "-e", &vars_json];
   if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
-  } else {
-      let _ = nya.trigger("log", Payload::new("Post build ran successfully.".to_string())).await;
   }
 
-  // Get control plane details
-    let base_vars = nya.get("nya.control_plane.vars").await;
-    let control_plane = nya.get("nya.control_plane").await["all"]["hosts"]["control_plane"].clone();
-    
-    let registry_host = base_vars["registry_host"].as_str().unwrap();
-    let control_plane_ip = registry_host.split(':').next().unwrap();
-    
-    let user = control_plane["ansible_user"].as_str().unwrap();
-    let ssh_key = control_plane["ansible_ssh_private_key_file"].as_str().unwrap();
-    let ssh_key = shellexpand::tilde(ssh_key).to_string();
-    
-    // Render templates
-    let mut tera = Tera::default();
-    tera.add_raw_template("ippool", embedded::METALLB_IP_POOL).unwrap();
-    tera.add_raw_template("l2adv", embedded::METALLB_L2ADV).unwrap();
-    
-    let mut context = Context::new();
-    context.insert("registry_host_ip", control_plane_ip);
-    
-    let ippool = tera.render("ippool", &context).unwrap();
-    let l2adv = tera.render("l2adv", &context).unwrap();
+  let base_vars = nya.get("nya.control_plane.vars").await;
+  let control_plane = nya.get("nya.control_plane").await["all"]["hosts"]["control_plane"].clone();
+  
+  let registry_host = base_vars["registry_host"].as_str().unwrap();
+  let control_plane_ip = registry_host.split(':').next().unwrap();
+  
+  let user = control_plane["ansible_user"].as_str().unwrap();
+  let ssh_key = control_plane["ansible_ssh_private_key_file"].as_str().unwrap();
+  let ssh_key = shellexpand::tilde(ssh_key).to_string();
+  
+  // Render templates
+  let mut tera = Tera::default();
+  tera.add_raw_template("ippool", embedded::METALLB_IP_POOL).unwrap();
+  tera.add_raw_template("l2adv", embedded::METALLB_L2ADV).unwrap();
+  
+  let mut context = Context::new();
+  context.insert("registry_host_ip", control_plane_ip);
+  
+  let ippool = tera.render("ippool", &context).unwrap();
+  let l2adv = tera.render("l2adv", &context).unwrap();
 
 
-    let _ = run_ssh(control_plane_ip, user, &ssh_key, "sudo chmod 644 /etc/rancher/k3s/k3s.yaml")
-        .await
-        .map_err(|e| format!("Failed to set kubeconfig permissions: {}", e)).unwrap();
-    
-    // Apply via kubectl
-    let kubectl_cmd = format!(
-        "kubectl apply -f - <<'EOF'
+  let _ = run_ssh(control_plane_ip, user, &ssh_key, "sudo chmod 644 /etc/rancher/k3s/k3s.yaml")
+      .await
+      .map_err(|e| format!("Failed to set kubeconfig permissions: {}", e)).unwrap();
+  
+  // Apply via kubectl
+  let kubectl_cmd = format!(
+      "kubectl apply -f - <<'EOF'
 {}
 ---
 {}
 EOF",
         ippool, l2adv
-    );
-    let _ = nya.trigger("log", Payload::new("Waiting for MetalLB to be ready...".to_string())).await;
-    
-    // Wait for MetalLB webhook to be available
-    tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
-    
-    let _ = nya.trigger("log", Payload::new("Configuring MetalLB...".to_string())).await;
-    
-    // Apply config with retry
-    for attempt in 1..=3 {
-        match run_ssh(control_plane_ip, user, &ssh_key, &kubectl_cmd).await {
-            Ok(_) => {
-                let _ = nya.trigger("log", Payload::new("MetalLB configured successfully".to_string())).await;
-                break;
-            }
-            Err(_) if attempt < 3 => {
-                let _ = nya.trigger("log", Payload::new(
-                    format!("MetalLB config failed (attempt {}/3), retrying in 20s...", attempt)
-                )).await;
-                tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
-            }
-            Err(e) => {
-                let _ = nya.trigger("log", Payload::new(format!("Failed to configure MetalLB after 3 attempts: {}", e))).await;
-            }
-        }
+    );  
+  // Wait for MetalLB webhook to be available
+  tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+  
+  // Apply config with retry
+  for attempt in 1..=3 {
+    match run_ssh(control_plane_ip, user, &ssh_key, &kubectl_cmd).await {
+      Ok(_) => {
+          break;
+      }
+      Err(_) if attempt < 3 => {
+          tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+      }
+      Err(_) => (),
     }
+  }
 }
 
 async fn build_nodes (nya: Nya, _: Payload) {
-  _ = &nya.trigger("log", Payload::new("Building nodes...".to_string())).await;
-
   let temp_path_str = setup_temp_inventory(nya.clone(), "nya.nodes").await;
   let node_token = nya.get("k3s_node_token").await;
   let mut nya_vars_value = nya.get("nya.nodes.vars").await;
@@ -138,8 +115,6 @@ async fn build_nodes (nya: Nya, _: Payload) {
   if let Value::Object(map) = &mut nya_vars_value {
     if let Value::String(token) = node_token {
         map.insert("k3s_node_token".into(), Value::String(token.clone()));
-    } else {
-        let _ = nya.trigger("log", Payload::new(format!("ERROR: k3s_token is not a String! Got: {:?}", node_token))).await;
     }
   } else {
     let _ = nya.trigger("log", Payload::new(format!("ERROR: nya.nodes.vars is not an object! Got: {:?}", nya_vars_value))).await;
@@ -152,14 +127,10 @@ async fn build_nodes (nya: Nya, _: Payload) {
   
   if let Err(err) = run_playbook(playbook_context, args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
-  } else {
-      let _ = nya.trigger("log", Payload::new("Nodes built successfully.".to_string())).await;
   }
 }
 
 async fn validate_cluster(nya: Nya, _: Payload) {
-  _ = &nya.trigger("log", Payload::new("Validating cluster...".to_string())).await;
-
   let temp_path_str = setup_temp_inventory(nya.clone(), "nya.control_plane").await;
 
   let nya_vars_value = nya.get("nya.control_plane.vars").await;
@@ -169,8 +140,6 @@ async fn validate_cluster(nya: Nya, _: Payload) {
   let args = vec!["-i", &temp_path_str, "-e", &vars_json];
   if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
-  } else {
-      let _ = nya.trigger("log", Payload::new("Validated cluster successfully.".to_string())).await;
   }
 }
 
@@ -186,14 +155,10 @@ async fn destroy_control_plane(nya: Nya, _: Payload) {
   let args = vec!["-i", &temp_path_str, "-e", &vars_json];
   if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
-  } else {
-      let _ = nya.trigger("log", Payload::new("Destroyed control plane successfully.".to_string())).await;
   }
 }
 
 async fn destroy_nodes(nya: Nya, _: Payload) {
-  _ = &nya.trigger("log", Payload::new("Destroying nodes...".to_string())).await;
-
   let temp_path_str = setup_temp_inventory(nya.clone(), "nya.nodes").await;
 
   let nya_vars_value = nya.get("nya.nodes.vars").await;
@@ -203,8 +168,6 @@ async fn destroy_nodes(nya: Nya, _: Payload) {
   let args = vec!["-i", &temp_path_str, "-e", &vars_json];
   if let Err(err) = run_playbook(playbook_content, args, nya.clone()).await {
     let _ = nya.trigger("log", Payload::new(format!("Ansible failed: {err}"))).await;
-  } else {
-      let _ = nya.trigger("log", Payload::new("Destroyed nodes successfully.".to_string())).await;
   }
   
 }
@@ -283,7 +246,6 @@ async fn run_playbook(content: &str, cmd_args: Vec<&str>, nya: Nya) -> Result<()
                 let token = caps.name("token").unwrap().as_str().to_string();
                 nya.set("k3s_node_token", token.clone()).await;
             }
-            let _ = nya.trigger("log", Payload::new(line.clone())).await;
           }
       }
   });

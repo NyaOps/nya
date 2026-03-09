@@ -3,8 +3,8 @@
     "all": {
       "hosts": {
         "control_plane": {
-          "ansible_host": "10.0.0.99",
-          "ansible_user": "ccj",
+          "ansible_host": "10.0.0.18",
+          "ansible_user": "cs",
           "ansible_ssh_private_key_file": "~/.ssh/id_ed25519"
         }
       }
@@ -14,20 +14,20 @@
     "all": {
       "hosts": {
         "worker1": {
-          "ansible_host": "10.0.0.100",
-          "ansible_user": "cryptochrisjames",
+          "ansible_host": "10.0.0.19",
+          "ansible_user": "cs",
           "ansible_ssh_private_key_file": "~/.ssh/id_ed25519"
         },
         "worker2": {
-          "ansible_host": "10.0.0.101",
-          "ansible_user": "cryptochrisjames",
+          "ansible_host": "10.0.0.20",
+          "ansible_user": "cs",
           "ansible_ssh_private_key_file": "~/.ssh/id_ed25519"
         }
       }
     }
   },
   "nya.control_plane.vars": { 
-    "registry_host": "10.0.0.99:5000",
+    "registry_host": "10.0.0.18:5000",
     "k3s_token": "test",
     "domain_name": "cybrsmth.local",
     "admin_email": "csmith4work@gmail.com",
@@ -37,7 +37,7 @@
     "mkcert_version": "v1.4.4"
   },
   "nya.nodes.vars": {
-    "registry_host": "10.0.0.99:5000",
-    "control_plane_ip": "10.0.0.99"
+    "registry_host": "10.0.0.18:5000",
+    "control_plane_ip": "10.0.0.18"
   }
 }

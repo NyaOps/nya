@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 oven/bun:slim
+FROM --platform=linux/amd64 oven/bun:slim
 WORKDIR /src
 COPY . .
 RUN bun install --frozen-lockfile

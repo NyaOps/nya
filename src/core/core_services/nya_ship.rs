@@ -162,8 +162,6 @@ async fn copy_values(ctx: &PackContext, nya: Nya) {
     let values_dest = format!("/tmp/{}-values.yaml", ctx.pack_name);
     let scp_dest = format!("{}@{}:{}", user, host, values_dest);
     
-    let _ = nya.trigger("log", Payload::new(format!("Copying values for {}...", ctx.pack_name))).await;
-    
     let mut cmd = Command::new("scp");
     cmd.args(["-i", &ssh_key, &values_src, &scp_dest])
         .stdin(Stdio::null())
@@ -175,8 +173,6 @@ async fn copy_values(ctx: &PackContext, nya: Nya) {
 
 async fn helm_deploy(ctx: &PackContext, nya: Nya) {
     let base_vars = nya.get("nya.control_plane.vars").await;
-    let _ = nya.trigger("log", Payload::new(format!("Base vars: {:?}", base_vars))).await;
-
     let control_plane = nya.get("nya.control_plane").await["all"]["hosts"]["control_plane"].clone();
     
     let host = control_plane["ansible_host"].as_str().unwrap();
@@ -187,7 +183,6 @@ async fn helm_deploy(ctx: &PackContext, nya: Nya) {
     let registry_host = base_vars["registry_host"].as_str().unwrap();
     let domain = base_vars["domain_name"].as_str().unwrap();
     let secret_name = base_vars["secret_name"].as_str().unwrap();
-    let _ = nya.trigger("log", Payload::new(format!("Domain value: '{}'", domain))).await;
 
     
     let values_path = format!("/tmp/{}-values.yaml", ctx.pack_name);
@@ -204,7 +199,6 @@ async fn helm_deploy(ctx: &PackContext, nya: Nya) {
         registry_host, domain, secret_name,
         chrono::Utc::now().timestamp()  // ← Forces pod recreation
     );
-    let _ = nya.trigger("log", Payload::new(format!("Helm command value: '{}'", helm_cmd))).await;
     
     let _ = nya.trigger("log", Payload::new(format!("Deploying {}...", ctx.pack_name))).await;
     

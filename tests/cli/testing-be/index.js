@@ -5,7 +5,7 @@ const app = express();
 app.use(cors());
 
 app.get('/:data', (req, res) => {
-    res.json({ message: `Hello from the backend! One more test: ${req.params.data}` });
+    res.json({ message: `Hello from the backend! Again! ${req.params.data}` });
 });
 
 const PORT = process.env.PORT || 3000;
