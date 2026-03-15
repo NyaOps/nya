@@ -18,7 +18,3 @@ pub const NYA_CHART: &str = include_str!("embedded/helm/Chart.yaml");
 pub const NYA_DEPLOYMENT_TEMPLATE: &str = include_str!("embedded/helm/deployment.yaml");
 pub const NYA_BACKEND_TEMPLATE: &str = include_str!("embedded/helm/backend.yaml");
 pub const NYA_FRONTEND_TEMPLATE: &str = include_str!("embedded/helm/frontend.yaml");
-
-//MetalLB
-pub const METALLB_IP_POOL: &str = include_str!("embedded/templates/base_build/metallb/metallb-ipaddresspool.yaml");
-pub const METALLB_L2ADV: &str = include_str!("embedded/templates/base_build/metallb/metallb-l2advertisement.yaml");
