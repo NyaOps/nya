@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 sudo apt update -y 
 sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
