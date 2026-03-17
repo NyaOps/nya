@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::embedded::CORE_SCHEMA;
+
+const CORE_SCHEMA: &str = include_str!("core_schema.json");
 
 type SchemaCollection = HashMap<String, NyaSchema>;
 type NyaSchemaSteps = Vec<String>;

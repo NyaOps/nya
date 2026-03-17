@@ -5,8 +5,7 @@ use serde_json::{Value, to_string, to_string_pretty};
 use tera::{Context, Tera};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
 
-use crate::{core::{payload::Payload, service::{Service, ServiceRegister, handle_function}}, embedded::{self, NYA_BACKEND_TEMPLATE, NYA_CHART, NYA_DEPLOYMENT_TEMPLATE, NYA_FRONTEND_TEMPLATE}, utils::run_ssh};
-use crate::runtime::nya::Nya;
+use crate::{core::{payload::Payload, service::{Service, ServiceRegister, handle_function}, runtime::Nya}, utils::run_ssh};
 use std::fs;
 use std::path::PathBuf;
 use regex::Regex;

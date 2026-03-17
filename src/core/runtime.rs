@@ -3,7 +3,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tokio::{sync::Mutex, task::JoinHandle};
 use crate::core::{context::NyaContext, event_bus::{EventBus, NyaEventBus}, payload::Payload, schema::NyaSchema, service::Service};
-
+use crate::external::get_core_services;
 struct NyaInternals {
   context: Arc<Mutex<NyaContext>>,
   schema: NyaSchema,
@@ -16,6 +16,23 @@ pub struct Nya {
 }
 
 impl Nya {
+  pub async fn run(cmd: &str, file_paths: Vec<&str>) {
+    let services = get_core_services();
+    let nya = Nya::build(cmd, file_paths, services);
+    let initial_payload = Payload::empty();
+    nya.execute(initial_payload).await;
+  }
+
+  pub async fn execute(&self, initial_payload: Payload) {
+    for (i, step) in self.internals.schema.steps.iter().enumerate() {
+        println!("\n Step {}/{}: {}", i + 1, self.internals.schema.steps.len(), step);
+        let step_handle: JoinHandle<()> = self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
+        _ = step_handle.await.map_err(|e| format!("Step '{}' failed: {:?}", step, e));
+        println!("Step {} completed", i + 1);
+    }
+    println!("\n Execution completed successfully!");
+  }
+
   pub fn build(cmd: &str, file_paths: Vec<&str>, reg: Vec<Box<dyn Service>>) -> Self {
     let nya_event_bus = build_nya_bus(reg);
     let ctx = NyaContext::new(file_paths);
@@ -26,15 +43,6 @@ impl Nya {
     }
   }
 
-  pub async fn run(&self, initial_payload: Payload) {
-    for (i, step) in self.internals.schema.steps.iter().enumerate() {
-        println!("\n Step {}/{}: {}", i + 1, self.internals.schema.steps.len(), step);
-        let step_handle: JoinHandle<()> = self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
-        _ = step_handle.await.map_err(|e| format!("Step '{}' failed: {:?}", step, e));
-        println!("Step {} completed", i + 1);
-    }
-    println!("\n Execution completed successfully!");
-  }
 
   pub async fn get(&self, key: &str) -> Value {
     let ctx = self.internals.context.lock().await;
@@ -70,7 +78,7 @@ fn build_nya_bus(reg: Vec<Box<dyn Service>>) -> NyaEventBus {
 
 #[cfg(test)] 
 mod nya_tests {
-    use crate::{core::{payload::Payload, service::service_tests::TestService}, runtime::nya::Nya};
+    use crate::{core::{payload::Payload, service::service_tests::TestService, runtime::Nya}};
 
   #[test]
   fn can_build_nya() {
@@ -80,25 +88,20 @@ mod nya_tests {
   #[tokio::test]
   async fn can_run_nya_schema() {
     let nya = Nya::build("test_cmd2", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
-    {
-      nya.run(Payload::empty()).await;
-    }
+    nya.execute(Payload::empty()).await;
     tokio::task::yield_now().await;
     let ctx = nya.internals.context.lock().await;
     let val1 = ctx.context.get("test_key").unwrap().as_str().unwrap();
     assert_eq!("test_value", val1);
   }
 
-  #[tokio::test]
+#[tokio::test]
   async fn can_get_value_from_nya() {
     let nya = Nya::build("test_cmd2", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
-    {
-      let _ = &nya.run(Payload::empty()).await;
-    }
+    nya.execute(Payload::empty()).await;
     tokio::task::yield_now().await;
     let nya_val = &nya.get("test_key").await;
-    let val1 = nya_val.as_str().unwrap();
-    assert_eq!("test_value", val1);
+    assert_eq!("test_value", nya_val.as_str().unwrap());
   }
 
   #[tokio::test]

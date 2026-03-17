@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use crate::core::payload::Payload;
 use crate::core::service::ServiceFunction;
-use crate::runtime::nya::Nya;
+use crate::core::runtime::Nya;
 use tokio::task::JoinHandle;
 
 pub struct NyaEventBus {
@@ -63,7 +63,7 @@ use crate::{core::
         {
           service_tests::TestService, Service
         }
-    }, runtime::nya::Nya};
+    }, core::runtime::Nya};
 
   #[tokio::test]
   async fn can_register_events() {

@@ -1,6 +1,32 @@
+pub mod runtime;
 pub mod event_bus;
 pub mod schema;
 pub mod context;
 pub mod service;
 pub mod payload;
-pub mod core_services;
+
+use crate::core::{payload::{Get, Payload}, service::{Service, ServiceRegister, handle_function}, runtime::Nya};
+
+pub struct NyaCore;
+
+impl Service for NyaCore {
+  fn name(&self) -> String {"NyaCore".to_string()}
+  fn register(&self) -> ServiceRegister {
+    vec![
+      ("test".to_string(), handle_function(test_nya_service)),
+      ("log".to_string(), handle_function(log))
+    ]
+  }
+}
+
+pub async fn log(_: Nya, payload: Payload) {
+  println!("{}", payload.get::<String>().unwrap());
+}
+
+pub async fn test_nya_service(nya: Nya, payload: Payload) {
+  let ctx_val = nya.get("test").await;
+  let pay_val = payload.get::<&str>().unwrap();
+  println!("Value from payload: {}", pay_val);
+  println!("Value from context: {}", ctx_val.to_string());
+  nya.trigger("log", Payload::new("test_log")).await;
+}

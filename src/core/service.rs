@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use futures::{future::BoxFuture, FutureExt};
-use crate::{core::payload::Payload, runtime::{nya::Nya}};
+use crate::{core::{payload::Payload, runtime::Nya}};
 
 pub type ServiceFunction = Arc<dyn Fn(Nya, Payload) -> BoxFuture<'static, ()> + Send + Sync>;
 pub type ServiceRegister = Vec<(String, ServiceFunction)>;
@@ -20,7 +20,7 @@ pub trait Service: Send + Sync + 'static {
 #[cfg(test)]
 pub mod service_tests{
 
-use crate::{core::{payload::Payload, service::{handle_function, Service, ServiceFunction, ServiceRegister}}, runtime::nya::Nya};
+use crate::{core::{payload::Payload, service::{handle_function, Service, ServiceFunction, ServiceRegister}, runtime::Nya}};
 
   pub async fn test_fn(nya: Nya, _: Payload) {
     nya.set("test_key", serde_json::Value::String("test_value".to_string())).await;

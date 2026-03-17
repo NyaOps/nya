@@ -1,5 +1,5 @@
 use std::fs;
-use crate::{ embedded, utils::ConfigStatus };
+use crate::utils::ConfigStatus;
 use colored::*;
 use crate::utils;
 
@@ -20,7 +20,7 @@ pub fn run(output_path: Option<String>) {
           }
       }
 
-      if let Err(e) = fs::write(&path, embedded::BASE_CONFIG_TEMPLATE) {
+      if let Err(e) = fs::write(&path, include_str!("../../src/ops/init/initial_config.json")) {
           println!("Failed to create config file at {}: {}", path.display(), e);
           return;
       }

@@ -5,7 +5,7 @@ use inquire::{Select, Text};
 use serde::Serialize;
 use serde_json::json;
 use tera::{Context, Tera};
-use crate::{cli::{capsule::read_capsule_file}, embedded, utils};
+use crate::{cli::{capsule::read_capsule_file}, utils};
 
 #[derive(Serialize, Debug)]
 pub struct Pack {
@@ -72,8 +72,8 @@ pub fn new(capsule: Option<String>) {
   };
 
   let pack_values_content = match pack_type {
-    "frontend" => embedded::PACK_FRONTEND_VALUES_TEMPLATE,
-    "backend" => embedded::PACK_BACKEND_VALUES_TEMPLATE,
+    "frontend" => include_str!("../../src/ops/pack/values.frontend.yaml"),
+    "backend" => include_str!("../../src/ops/pack/values.backend.yaml"),
     _ => { 
       print!("There was an issue with getting the values for your pack. Please try again.");
       return;
@@ -114,7 +114,7 @@ pub fn new(capsule: Option<String>) {
     return
   }
 
-  if let Err(e) = fs::write(dockerfile_path, embedded::PACK_DOCKERFILE_TEMPLATE) {
+  if let Err(e) = fs::write(dockerfile_path, include_str!("../../src/ops/pack/Dockerfile")) {
       println!("Failed to create config file at {}: {}", &pack_path_buf.display(), e);
       return;
   }
