@@ -35,13 +35,10 @@ impl Nya {
   }
 
   pub async fn execute(&self, initial_payload: Payload) {
-    for (i, step) in self.internals.schema.steps.iter().enumerate() {
-        println!("\n Step {}/{}: {}", i + 1, self.internals.schema.steps.len(), step);
+    for step in self.internals.schema.steps.iter() {
         let step_handle: JoinHandle<()> = self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
-        _ = step_handle.await.map_err(|e| format!("Step '{}' failed: {:?}", step, e));
-        println!("Step {} completed", i + 1);
+        _ = step_handle.await.map_err(|e| format!("An error occurred while executing '{}': {:?}", step, e));
     }
-    println!("\n Execution completed successfully!");
   }
 
 
