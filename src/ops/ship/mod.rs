@@ -2,16 +2,16 @@ use std::{env, path::PathBuf, process::Stdio};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
-use crate::{core::{payload::Payload, service::{Service, ServiceRegister, handle_function}, runtime::Nya}};
+use crate::{core::{payload::Payload, service::{Service, ServiceActions, handle_action}, runtime::Nya}};
 
 pub struct NyaShip;
 
 impl Service for NyaShip {
   fn name(&self) -> String {"NyaShip".to_string()}
-  fn register(&self) -> ServiceRegister {
+  fn register(&self) -> ServiceActions {
     vec![
-      ("onBuildPacks".to_string(), handle_function(build_packs)),
-      ("onDeployCapsule".to_string(), handle_function(deploy_capsule)),
+      ("onBuildPacks".to_string(), handle_action(build_packs)),
+      ("onDeployCapsule".to_string(), handle_action(deploy_capsule)),
     ]
   }
 }

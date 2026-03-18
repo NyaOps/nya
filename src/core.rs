@@ -5,16 +5,16 @@ pub mod context;
 pub mod service;
 pub mod payload;
 
-use crate::core::{payload::{Get, Payload}, service::{Service, ServiceRegister, handle_function}, runtime::Nya};
+use crate::core::{payload::{Get, Payload}, service::{Service, ServiceActions, handle_action}, runtime::Nya};
 
 pub struct NyaCore;
 
 impl Service for NyaCore {
   fn name(&self) -> String {"NyaCore".to_string()}
-  fn register(&self) -> ServiceRegister {
+  fn register(&self) -> ServiceActions {
     vec![
-      ("test".to_string(), handle_function(test_nya_service)),
-      ("log".to_string(), handle_function(log))
+      ("test".to_string(), handle_action(test_nya_service)),
+      ("log".to_string(), handle_action(log))
     ]
   }
 }

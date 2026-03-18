@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use crate::core::payload::Payload;
-use crate::core::service::ServiceFunction;
+use crate::core::service::Action;
 use crate::core::runtime::Nya;
 use tokio::task::JoinHandle;
 
 pub struct NyaEventBus {
-  event_handlers: HashMap<String, Vec<ServiceFunction>>
+  event_handlers: HashMap<String, Vec<Action>>
 }
 
 impl NyaEventBus {
@@ -19,13 +19,13 @@ impl NyaEventBus {
 
 #[async_trait::async_trait]
 pub trait EventBus: Send + Sync + 'static {
-  fn on(&mut self, event: String, handler: ServiceFunction);
+  fn on(&mut self, event: String, handler: Action);
   async fn emit(&self, nya: Nya, event: String, payload: Payload) -> JoinHandle<()>;
 }
 
 #[async_trait::async_trait]
 impl EventBus for NyaEventBus {
-  fn on(&mut self, event: String, handler: ServiceFunction) {
+  fn on(&mut self, event: String, handler: Action) {
     self.event_handlers
       .entry(event)
       .or_insert_with(Vec::new)
@@ -33,13 +33,13 @@ impl EventBus for NyaEventBus {
     }
   
   async fn emit(&self, nya: Nya, event: String, payload: Payload) -> JoinHandle<()> {
-    let mut join_handles = Vec::new();
+    let mut join_handles: Vec<JoinHandle<()>> = Vec::new();
       if let Some(handlers) = self.event_handlers.get(&event) {
           for handler in handlers {
-            let nya_clone = nya.clone();
-            let payload_clone = payload.clone();
+            let nya_clone: Nya = nya.clone();
+            let payload_clone: Payload = payload.clone();
             let handler_clone = Arc::clone(handler);
-            let handle = tokio::spawn(async move {
+            let handle: JoinHandle<()> = tokio::spawn(async move {
                 handler_clone(nya_clone, payload_clone).await;
             });
             join_handles.push(handle);

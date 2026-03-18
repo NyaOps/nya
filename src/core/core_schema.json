@@ -1,10 +1,7 @@
 {
   "base:build": {
     "steps": [
-      "onBuildMainServer",
-      "onBuildNodeServers",
-      "onRunPostBuild",
-      "onValidateCluster"
+      "onPreBuild"
     ]
   },
   "base:destroy": {

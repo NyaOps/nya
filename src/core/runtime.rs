@@ -4,6 +4,7 @@ use serde_json::Value;
 use tokio::{sync::Mutex, task::JoinHandle};
 use crate::core::{context::NyaContext, event_bus::{EventBus, NyaEventBus}, payload::Payload, schema::NyaSchema, service::Service};
 use crate::external::get_core_services;
+
 struct NyaInternals {
   context: Arc<Mutex<NyaContext>>,
   schema: NyaSchema,
@@ -22,6 +23,16 @@ impl Nya {
     let initial_payload = Payload::empty();
     nya.execute(initial_payload).await;
   }
+  
+  pub fn build(cmd: &str, file_paths: Vec<&str>, reg: Vec<Box<dyn Service>>) -> Self {
+    let nya_event_bus = build_nya_bus(reg);
+    let ctx = NyaContext::new(file_paths);
+    let schema = NyaSchema::new(cmd);
+      Self {
+        internals: Arc::new(NyaInternals { context: Arc::new(Mutex::new(ctx)), schema: schema, bus: Arc::new(nya_event_bus) }
+      )
+    }
+  }
 
   pub async fn execute(&self, initial_payload: Payload) {
     for (i, step) in self.internals.schema.steps.iter().enumerate() {
@@ -33,15 +44,6 @@ impl Nya {
     println!("\n Execution completed successfully!");
   }
 
-  pub fn build(cmd: &str, file_paths: Vec<&str>, reg: Vec<Box<dyn Service>>) -> Self {
-    let nya_event_bus = build_nya_bus(reg);
-    let ctx = NyaContext::new(file_paths);
-    let schema = NyaSchema::new(cmd);
-      Self {
-        internals: Arc::new(NyaInternals { context: Arc::new(Mutex::new(ctx)), schema: schema, bus: Arc::new(nya_event_bus) }
-      )
-    }
-  }
 
 
   pub async fn get(&self, key: &str) -> Value {
