@@ -36,12 +36,9 @@ impl Nya {
 
   pub async fn execute(&self, initial_payload: Payload) {
     for step in self.internals.schema.steps.iter() {
-        let step_handle: JoinHandle<()> = self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
-        _ = step_handle.await.map_err(|e| format!("An error occurred while executing '{}': {:?}", step, e));
+      self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
     }
   }
-
-
 
   pub async fn get(&self, key: &str) -> Value {
     let ctx = self.internals.context.lock().await;
@@ -58,8 +55,23 @@ impl Nya {
     }
   }
 
-  pub async fn trigger(&self, event: &str, payload: Payload) {
-    self.internals.bus.emit(self.clone(), event.to_string(), payload).await;
+  pub fn trigger(&self, event: &str, payload: Payload) -> JoinHandle<()> {
+    let nya = self.clone();
+    let event_name = event.to_string();
+    tokio::spawn(async move {
+        nya.internals.bus.emit(nya.clone(), event_name, payload).await;
+    })
+}
+
+  pub async fn trigger_all(&self, triggers: Vec<(&str, Payload)>) {
+    let handles: Vec<JoinHandle<()>> = triggers
+      .into_iter()
+      .map(|(event, payload)| self.trigger(event, payload))
+      .collect();
+
+    for handle in handles {
+      let _ = handle.await;
+    }
   }
 }
 

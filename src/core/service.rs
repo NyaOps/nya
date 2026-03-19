@@ -35,7 +35,7 @@ use crate::{core::{payload::Payload, service::{handle_action, Service, Action, S
     fn register(&self) -> ServiceActions {
         vec![
           ("test".to_string(), handle_action(test_fn)),
-          ("test".to_string(), handle_action(test_fn2))
+          ("test2".to_string(), handle_action(test_fn2))
         ]
     }
   }

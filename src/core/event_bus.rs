@@ -3,10 +3,9 @@ use std::sync::Arc;
 use crate::core::payload::Payload;
 use crate::core::service::Action;
 use crate::core::runtime::Nya;
-use tokio::task::JoinHandle;
 
 pub struct NyaEventBus {
-  event_handlers: HashMap<String, Vec<Action>>
+  event_handlers: HashMap<String, Action>
 }
 
 impl NyaEventBus {
@@ -20,36 +19,23 @@ impl NyaEventBus {
 #[async_trait::async_trait]
 pub trait EventBus: Send + Sync + 'static {
   fn on(&mut self, event: String, handler: Action);
-  async fn emit(&self, nya: Nya, event: String, payload: Payload) -> JoinHandle<()>;
+  async fn emit(&self, nya: Nya, event: String, payload: Payload);
 }
 
 #[async_trait::async_trait]
 impl EventBus for NyaEventBus {
   fn on(&mut self, event: String, handler: Action) {
-    self.event_handlers
-      .entry(event)
-      .or_insert_with(Vec::new)
-      .push(handler)
-    }
+    self.event_handlers.insert(event, handler);
+  }
   
-  async fn emit(&self, nya: Nya, event: String, payload: Payload) -> JoinHandle<()> {
-    let mut join_handles: Vec<JoinHandle<()>> = Vec::new();
-      if let Some(handlers) = self.event_handlers.get(&event) {
-          for handler in handlers {
-            let nya_clone: Nya = nya.clone();
-            let payload_clone: Payload = payload.clone();
-            let handler_clone = Arc::clone(handler);
-            let handle: JoinHandle<()> = tokio::spawn(async move {
-                handler_clone(nya_clone, payload_clone).await;
-            });
-            join_handles.push(handle);
-          }
-      }
-    tokio::spawn(async move {
-      for handle in join_handles {
-        let _ = handle.await;
-      }
-    })
+  async fn emit(&self, nya: Nya, event: String, payload: Payload) {
+    if let Some(handler) = self.event_handlers.get(&event) {
+      let nya_clone: Nya = nya.clone();
+      let handler_clone = Arc::clone(handler);
+      handler_clone(nya_clone, payload).await;
+    } else {
+      println!("No handler registered for event: {}", event);
+    }
   }
 }
 
@@ -88,28 +74,6 @@ use crate::{core::
     let ctx_val = test_nya.get("test_key").await;
     let value: String = from_value(ctx_val.clone()).unwrap();
     assert_eq!(value, "test_value".to_string());
-  }
-
-  #[tokio::test]
-  async fn event_bus_can_run_multiple_handlers_for_same_event() {
-    let mut event_bus = NyaEventBus::new();
-    let svc = Box::new(TestService);
-    let handler1= svc.register()[0].1.clone();
-    let handler2= svc.register()[1].1.clone();
-    let event_name = svc.register()[0].0.clone();
-    let test_nya = Nya::build("test_cmd", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
-    {
-      event_bus.on(event_name.clone(), handler1);
-      event_bus.on(event_name.clone(), handler2);
-      event_bus.emit(test_nya.clone(), event_name, Payload::empty()).await;
-    }
-    tokio::task::yield_now().await;
-    let ctx_val = test_nya.get("test_key").await;
-    let ctx_val2 = test_nya.get("test_key2").await;
-    let value: String = from_value(ctx_val.clone()).unwrap();
-    let value2: String = from_value(ctx_val2.clone()).unwrap();
-    assert_eq!(value, "test_value".to_string());
-    assert_eq!(value2, "test_value2".to_string());
   }
 
   #[tokio::test]
