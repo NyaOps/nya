@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eu pipefail
 
 DOMAIN=$1
 

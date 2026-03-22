@@ -16,6 +16,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.100"
 async-trait = "0.1.88"
+base64 = "0.22.1"
 chrono = { version = "0.4.43", features = ["serde"] }
 clap = { version = "4.5.57", features = ["derive"] }
 colored = "3.1.1"

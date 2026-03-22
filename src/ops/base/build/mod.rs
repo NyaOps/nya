@@ -1,14 +1,15 @@
 use crate::core::{payload::{Get, Payload, Take}, runtime::Nya, service::{Service, ServiceActions, handle_action}};
+use crate::ops::{types, utils};
 use openssh::Session;
 use serde_json::Value;
 
-pub struct NyaBase;
-pub(crate) mod types;
-pub(crate) mod utils;
+const INSTALL_DOCKER_SCRIPT: &str = include_str!("scripts/install_docker.sh");
+
+pub struct NyaBaseBuild;
 
 use types::BaseNodeConfig;
 use utils::create_ssh_session;
-impl Service for NyaBase {
+impl Service for NyaBaseBuild {
   fn name(&self) -> String {"NyaBase".to_string()}
   fn register(&self) -> ServiceActions {
     vec![
@@ -46,7 +47,15 @@ async fn prebuild_action(nya: Nya, _: Payload) {
 
 async fn run_prebuild_script(_: Nya, payload: Payload) {
   let session = payload.take::<Session>().unwrap();
-  let output = &session.command("hostname").output().await.unwrap();
-  println!("Connected! Remote hostname: {}", String::from_utf8_lossy(&output.stdout));
+  let encoded = base64::encode(INSTALL_DOCKER_SCRIPT);
+  let output = session.command("sh")
+      .arg("-c")
+      .arg(format!("echo {} | base64 -d | sh", encoded))
+      .output()
+      .await
+      .unwrap();
+
+  println!("{}", String::from_utf8_lossy(&output.stdout));
+  eprintln!("{}", String::from_utf8_lossy(&output.stderr));
   session.close().await.unwrap();
 }

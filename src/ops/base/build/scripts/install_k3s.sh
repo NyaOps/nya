@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eu pipefail
 
 K3S_TOKEN=$1
 CONTROL_PLANE_IP=$2

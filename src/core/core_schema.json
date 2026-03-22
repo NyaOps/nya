@@ -6,8 +6,7 @@
   },
   "base:destroy": {
     "steps": [
-      "onDestroyNodes",
-      "onDestroyControlPlane"
+      "onDestroyBase"
     ]
   },
   "capsule:ship": {

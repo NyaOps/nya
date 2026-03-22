@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eou pipefail
+set -eu pipefail
 
 DOMAIN=$1
 SECRET_NAME=$2

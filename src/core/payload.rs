@@ -1,7 +1,5 @@
 use std::{any::{Any, type_name}, sync::Arc};
 
-type DynAny = dyn Any + Send + Sync + 'static;
-
 #[derive(Clone, Default)]
 pub struct Payload {
     value: Option<Arc<dyn Any + Send + Sync>>,

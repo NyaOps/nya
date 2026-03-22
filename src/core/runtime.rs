@@ -2,13 +2,14 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::{sync::Mutex, task::JoinHandle};
-use crate::core::{context::NyaContext, event_bus::{EventBus, NyaEventBus}, payload::Payload, schema::NyaSchema, service::Service};
+use crate::core::{context::NyaContext, event_bus::{EventBus, NyaEventBus}, payload::Payload, schema::NyaSchema, service::Service, task_tracker::TaskTracker};
 use crate::external::get_core_services;
 
 struct NyaInternals {
   context: Arc<Mutex<NyaContext>>,
   schema: NyaSchema,
-  bus: Arc<NyaEventBus>
+  bus: Arc<NyaEventBus>,
+  task_tracker: TaskTracker,
 }
 
 #[derive(Clone)]
@@ -29,7 +30,7 @@ impl Nya {
     let ctx = NyaContext::new(file_paths);
     let schema = NyaSchema::new(cmd);
       Self {
-        internals: Arc::new(NyaInternals { context: Arc::new(Mutex::new(ctx)), schema: schema, bus: Arc::new(nya_event_bus) }
+        internals: Arc::new(NyaInternals { context: Arc::new(Mutex::new(ctx)), schema: schema, bus: Arc::new(nya_event_bus), task_tracker: TaskTracker::new() }
       )
     }
   }
@@ -38,6 +39,7 @@ impl Nya {
     for step in self.internals.schema.steps.iter() {
       self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
     }
+    self.internals.task_tracker.wait_all().await;
   }
 
   pub async fn get(&self, key: &str) -> Value {
@@ -55,22 +57,18 @@ impl Nya {
     }
   }
 
-  pub fn trigger(&self, event: &str, payload: Payload) -> JoinHandle<()> {
+  pub async fn trigger(&self, event: &str, payload: Payload) {
     let nya = self.clone();
     let event_name = event.to_string();
-    tokio::spawn(async move {
+    let handle: JoinHandle<()> = tokio::spawn(async move {
         nya.internals.bus.emit(nya.clone(), event_name, payload).await;
-    })
-}
+    });
+    self.internals.task_tracker.add(handle).await;
+  }
 
   pub async fn trigger_all(&self, triggers: Vec<(&str, Payload)>) {
-    let handles: Vec<JoinHandle<()>> = triggers
-      .into_iter()
-      .map(|(event, payload)| self.trigger(event, payload))
-      .collect();
-
-    for handle in handles {
-      let _ = handle.await;
+    for (event, payload) in triggers {
+      self.trigger(event, payload).await;
     }
   }
 }
