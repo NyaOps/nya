@@ -1,7 +1,6 @@
-use crate::core::{payload::{Get, Payload, Take}, runtime::Nya, service::{Service, ServiceActions, handle_action}};
+use crate::{core::{payload::{Payload, Take}, runtime::Nya, service::{Service, ServiceActions, handle_action}}, ops::utils::get_base_nodes};
 use crate::ops::{types, utils};
 use openssh::Session;
-use serde_json::Value;
 
 const REMOVE_DOCKER_SCRIPT: &str = include_str!("scripts/remove_docker.sh");
 
@@ -22,26 +21,14 @@ impl Service for NyaBaseDestroy {
 async fn destroy_action(nya: Nya, _: Payload) {
   println!("Destorying the base");
 
-  let control_plane_value: Value = nya.get("nya.control_plane").await;
-  let nodes_values: Value = nya.get("nya.nodes").await;
+  let node_configs: Vec<BaseNodeConfig> = get_base_nodes(nya.clone()).await;
 
-  let control_plane: BaseNodeConfig = BaseNodeConfig ::new(control_plane_value);
-  let nodes: Vec<BaseNodeConfig> = nodes_values
-    .as_array()
-    .unwrap_or(&vec![])
-    .iter()
-    .map(|node| BaseNodeConfig::new(node.clone()))
-    .collect();
-
-  let mut all_nodes = vec![control_plane.clone()]; 
-  all_nodes.extend(nodes);
-
-  let mut pre_build_tasks: Vec<(&str, Payload)> = Vec::new();
-  for node in all_nodes.iter() {
+  let mut cleanup_tasks: Vec<(&str, Payload)> = Vec::new();
+  for node in node_configs.iter() {
     let session = create_ssh_session(node).await;
-    pre_build_tasks.push(("runCleanup", Payload::new(session)));
+    cleanup_tasks.push(("runCleanup", Payload::new(session)));
   }
-  nya.trigger_all(pre_build_tasks).await;
+  nya.trigger_all(cleanup_tasks).await;
 }
 
 async fn run_cleanup_script(_: Nya, payload: Payload) {

@@ -1,7 +1,6 @@
-use crate::core::{payload::{Get, Payload, Take}, runtime::Nya, service::{Service, ServiceActions, handle_action}};
+use crate::{core::{payload::{Payload, Take}, runtime::Nya, service::{Service, ServiceActions, handle_action}}, ops::utils::get_base_nodes};
 use crate::ops::{types, utils};
 use openssh::Session;
-use serde_json::Value;
 
 const INSTALL_DOCKER_SCRIPT: &str = include_str!("scripts/install_docker.sh");
 
@@ -23,22 +22,10 @@ async fn prebuild_action(nya: Nya, _: Payload) {
   println!("Building the base");
   println!("Running the prebuild");
 
-  let control_plane_value: Value = nya.get("nya.control_plane").await;
-  let nodes_values: Value = nya.get("nya.nodes").await;
-
-  let control_plane: BaseNodeConfig = BaseNodeConfig ::new(control_plane_value);
-  let nodes: Vec<BaseNodeConfig> = nodes_values
-    .as_array()
-    .unwrap_or(&vec![])
-    .iter()
-    .map(|node| BaseNodeConfig::new(node.clone()))
-    .collect();
-
-  let mut all_nodes = vec![control_plane.clone()]; 
-  all_nodes.extend(nodes);
+  let node_configs: Vec<BaseNodeConfig> = get_base_nodes(nya.clone()).await;
 
   let mut pre_build_tasks: Vec<(&str, Payload)> = Vec::new();
-  for node in all_nodes.iter() {
+  for node in node_configs.iter() {
     let session = create_ssh_session(node).await;
     pre_build_tasks.push(("runPreBuild", Payload::new(session)));
   }
