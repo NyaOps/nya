@@ -15,3 +15,8 @@ impl BaseNodeConfig {
     ssh_key_path: value.get("ssh_private_key_file").and_then(|v| v.as_str()).unwrap_or("unknown").to_string(), }
   }
 }
+
+pub enum NodeCommandResult {
+  Success,
+  Failure(String),
+}

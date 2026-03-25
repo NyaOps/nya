@@ -33,15 +33,11 @@ async fn destroy_action(nya: Nya, _: Payload) {
 
 async fn run_cleanup_script(_: Nya, payload: Payload) {
   let session = payload.take::<Session>().unwrap();
-  let encoded = base64::encode(REMOVE_DOCKER_SCRIPT);
-  let output = session.command("sh")
+  let output = session.command("sh") 
       .arg("-c")
-      .arg(format!("echo {} | base64 -d | sh", encoded))
+      .arg(REMOVE_DOCKER_SCRIPT)
       .output()
       .await
       .unwrap();
-
-  println!("{}", String::from_utf8_lossy(&output.stdout));
-  eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-  session.close().await.unwrap();
 }
+

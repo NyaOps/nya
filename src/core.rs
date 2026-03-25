@@ -5,6 +5,7 @@ pub mod context;
 pub mod service;
 pub mod payload;
 mod task_tracker;
+pub mod checks;
 
 use crate::core::{payload::{Get, Payload}, service::{Service, ServiceActions, handle_action}, runtime::Nya};
 

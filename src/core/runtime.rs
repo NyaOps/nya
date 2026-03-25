@@ -38,8 +38,8 @@ impl Nya {
   pub async fn execute(&self, initial_payload: Payload) {
     for step in self.internals.schema.steps.iter() {
       self.internals.bus.clone().emit(self.clone(), step.clone(), initial_payload.clone()).await;
+      self.internals.task_tracker.wait_all().await;
     }
-    self.internals.task_tracker.wait_all().await;
   }
 
   pub async fn get(&self, key: &str) -> Value {

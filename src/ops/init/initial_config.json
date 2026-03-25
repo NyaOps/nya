@@ -11,7 +11,7 @@
       "ssh_private_key_file": "provide the path to your ssh private key file"
     }
   ],
-  "nya.control_plane.vars": { 
+  "nya.control_plane.vars": {
     "k3s_token": "provide any value",
     "domain_name": "provide your full domain name",
     "admin_email": "provide an email address",
@@ -19,5 +19,6 @@
     "mkcert_os": "provide the os you're building for (i.e. linux, win64)",
     "mkcert_arch": "provide the cpu architecture you're building for (i.e. arm64, amd64)",
     "mkcert_version": "v1.4.4"
-  }
+  },
+  "nya.registry_host": "provide the ip address or domain name for your docker registry. Remove it to default to the control plane"
 }

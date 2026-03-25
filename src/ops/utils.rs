@@ -1,8 +1,6 @@
 use openssh::{Session, SessionBuilder};
 use serde_json::Value;
-use crate::core::runtime::Nya;
-
-use super::types::BaseNodeConfig;
+use crate::{core::runtime::Nya, ops::types::{BaseNodeConfig, NodeCommandResult}};
 
 pub async fn get_base_nodes(nya: Nya) -> Vec<BaseNodeConfig> {
   let control_plane_value: Value = nya.get("nya.control_plane").await;
@@ -33,4 +31,35 @@ pub async fn create_ssh_session(node: &BaseNodeConfig) -> Session {
           panic!("Failed to connect to node");
         },
     }
+}
+
+pub async fn run_on_node(session: &Session, command: &str) -> NodeCommandResult {
+    match session.command("sh")
+        .arg("-c")
+        .arg(command)
+        .output()
+        .await
+    {
+        Ok(output) => {
+            if !output.status.success() {
+                eprintln!("Command error: {}", String::from_utf8_lossy(&output.stderr));
+                return NodeCommandResult::Failure(String::from_utf8_lossy(&output.stderr).to_string());
+            }
+            NodeCommandResult::Success
+        },
+        Err(e) => {
+          eprintln!("Command error: {}", e.to_string());
+          return NodeCommandResult::Failure(e.to_string());
+
+        },
+    }
+}
+
+pub async fn prepare_base_context(nya: Nya) {
+  let control_plane_value: Value = nya.get("nya.registry_host").await;
+  if control_plane_value == Value::Null || control_plane_value.as_str().unwrap_or("").is_empty() {
+    let control_plane_value: Value = nya.get("nya.control_plane").await;
+    let host = control_plane_value.get("host").and_then(|v| v.as_str()).unwrap_or("");
+    let _ = nya.set("nya.registry_host", host.to_string()).await;
+  }
 }
