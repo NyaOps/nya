@@ -1,7 +1,8 @@
 {
   "base:build": {
     "steps": [
-      "onPreBuild"
+      "onPreBuild",
+      "onBuildControlPlane"
     ]
   },
   "base:destroy": {

@@ -1,10 +1,10 @@
 options {
     directory "/var/cache/bind";
     recursion yes;
-    allow-recursion { localhost; 10.0.0.0/24; };
+    allow-recursion { localhost; {{ network_cidr }}; };
     listen-on port 53 { any; };
     dnssec-validation auto;
-    allow-query { localhost; 10.0.0.0/24; };
+    allow-query { localhost; {{ network_cidr }}; };
     forwarders {
         1.1.1.1;
         8.8.8.8;

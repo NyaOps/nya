@@ -1,0 +1,8 @@
+mirrors:
+  "{{ registry_host }}":
+    endpoint:
+      - "http://{{ registry_host }}"
+configs:
+  "{{ registry_host }}":
+    tls:
+      insecure_skip_verify: true
