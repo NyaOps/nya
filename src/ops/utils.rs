@@ -24,6 +24,17 @@ pub async fn get_control_plane_config(nya: Nya) -> BaseNodeConfig {
   BaseNodeConfig::new(control_plane_value)
 }
 
+pub async fn get_node_configs(nya: Nya) -> Vec<BaseNodeConfig> {
+  let nodes_values: Value = nya.get("nya.nodes").await;
+  let nodes: Vec<BaseNodeConfig> = nodes_values
+    .as_array()
+    .unwrap_or(&vec![])
+    .iter()
+    .map(|node| BaseNodeConfig::new(node.clone()))
+    .collect();
+  nodes
+}
+
 pub async fn create_ssh_session(node: &BaseNodeConfig) -> Session {
     let mut session_builder = SessionBuilder::default();
     session_builder.user(node.user.clone());

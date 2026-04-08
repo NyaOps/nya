@@ -14,6 +14,7 @@
   "nya.control_plane.vars": {
     "k3s_token": "provide any value",
     "domain_name": "provide your full domain name",
+    "control_plane_type": "where is your control plane being deployed? Options: 'cloud', 'bare_metal'",
     "admin_email": "provide an email address",
     "secret_name": "provide a secret name to use for your tls certs",
     "mkcert_os": "provide the os you're building for (i.e. linux, win64)",
