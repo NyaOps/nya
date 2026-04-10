@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use colored::*;
 
 use openssh::Session;
 use tera::Context;
@@ -48,6 +49,11 @@ pub async fn complete_cluster(nya: Nya, _: Payload) {
   let _ = nya.trigger("setupBind9", Payload::new(session_arc.clone())).await;
   let _ = nya.trigger("setupHelm", Payload::new(session_arc.clone())).await;
   let _ = nya.trigger("setupTLS", Payload::new(session_arc.clone())).await;
+}
+
+pub async fn on_build_complete(_nya: Nya, _: Payload) {
+  println!("{}", "Build completed successfully!".green());
+  println!("You can now create a Capsule to deploy your apps to Nya by running: {}", "nya capsule new -c ./your_capsule_path".purple());
 }
 
 pub async fn register_node(nya: Nya, payload: Payload) {
@@ -122,12 +128,32 @@ pub async fn setup_bind9(nya: Nya, payload: Payload) {
   let rendered_options: String = tera::Tera::one_off(NAMED_CONF_OPTIONS_TEMPLATE, &tera_context, false).unwrap();
   let rendered_db: String = tera::Tera::one_off(BIND9_DB_TEMPLATE, &tera_context, false).unwrap();
 
+  let dpkg_config: &str = "sudo dpkg --configure -a";
+  let apt_get: &str = "sudo apt-get install -f -y";
+
   let install_bind9_cmd: &str = "sudo apt update && sudo apt install -y bind9 bind9utils bind9-doc";
   let configure_bind9_cmd: &str = "sudo mkdir -p /etc/bind/zones && sudo chmod 755 /etc/bind/zones";
   let local_cmd: String = format!("echo '{}' | sudo tee /etc/bind/named.conf.local", rendered_local);
   let options_cmd: String = format!("echo '{}' | sudo tee /etc/bind/named.conf.options", rendered_options);
   let db_cmd: String = format!("echo '{}' | sudo tee /etc/bind/zones/db.{}", rendered_db, bind9_context.domain_name);
 
+  let dpkg_result = run_on_node(&session, dpkg_config).await;
+  match dpkg_result {
+    NodeCommandResult::Success => println!("dpkg configured successfully."),
+    NodeCommandResult::Failure(err) => {
+      eprintln!("Failed to configure dpkg: {}", err);
+      return;
+    },
+  }
+
+  let apt_get_result = run_on_node(&session, apt_get).await;
+  match apt_get_result {
+    NodeCommandResult::Success => println!("apt-get dependencies installed successfully."),
+    NodeCommandResult::Failure(err) => {
+      eprintln!("Failed to install apt-get dependencies: {}", err);
+      return;
+    },
+  }
   
   let bind9_install_result = run_on_node(&session, install_bind9_cmd).await;
   match bind9_install_result {

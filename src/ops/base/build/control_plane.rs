@@ -6,6 +6,7 @@ use types::BaseNodeConfig;
 use utils::create_ssh_session;
 
 const INSTALL_K3S_SCRIPT: &str = include_str!("scripts/install_k3s.sh");
+const INSTALL_K3S_CLOUD_SCRIPT: &str = include_str!("scripts/install_k3s_cloud.sh");
 const K3S_REGISTRIES_TEMPLATE: &str = include_str!("templates/registries.yaml");
 const INSTALL_HELM_SCRIPT: &str = include_str!("scripts/install_helm.sh");
 
@@ -33,7 +34,8 @@ pub async fn build_control_plane_action(nya: Nya, _: Payload) {
 
   let context_value = serde_json::to_value(&control_plane_context).unwrap();
   let tera_context = Context::from_serialize(&context_value).unwrap();
-  let rendered_script = tera::Tera::one_off(INSTALL_K3S_SCRIPT, &tera_context, false).unwrap();
+  let k3s_script = if control_plane_type == "cloud" { INSTALL_K3S_CLOUD_SCRIPT } else { INSTALL_K3S_SCRIPT };
+  let rendered_script = tera::Tera::one_off(k3s_script, &tera_context, false).unwrap();
   let rendered_registries = tera::Tera::one_off(K3S_REGISTRIES_TEMPLATE, &tera_context, false).unwrap();
 
   let session: Session = create_ssh_session(&control_plane_config).await;

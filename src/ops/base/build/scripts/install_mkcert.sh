@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu pipefail
+set -euo pipefail
 
 LATEST=$(sudo curl -fsSL https://api.github.com/repos/FiloSottile/mkcert/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
 sudo curl -fsSL "https://github.com/FiloSottile/mkcert/releases/download/${LATEST}/mkcert-${LATEST}-linux-amd64" -o /usr/local/bin/mkcert

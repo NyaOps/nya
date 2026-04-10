@@ -1,5 +1,7 @@
 #!/bin/bash
-set -eu pipefail
+set -euo pipefail
+
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
@@ -9,7 +11,11 @@ sudo -E helm repo update
 sudo -E helm upgrade --install metallb metallb/metallb \
   --namespace metallb-system \
   --create-namespace
-cat <<EOF | sudo kubectl apply -f -
+
+sudo -E kubectl rollout status deployment/metallb-controller -n metallb-system --timeout=120s
+sudo -E kubectl delete validatingwebhookconfigurations metallb-webhook-configuration --ignore-not-found
+
+cat <<EOF | sudo -E kubectl apply -f -
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
@@ -25,8 +31,7 @@ metadata:
   name: default
   namespace: metallb-system
 EOF
-sudo -E kubectl rollout status deployment/metallb-controller -n metallb-system --timeout=120s
-sleep 10
+
 sudo -E helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
@@ -36,5 +41,4 @@ sudo -E helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 sudo -E kubectl create secret tls {{ secret_name }} \
   --key /etc/nya/certs/{{ domain }}-key.pem \
   --cert /etc/nya/certs/{{ domain }}.pem \
-  --kubeconfig=/etc/rancher/k3s/k3s.yaml \
   --namespace ingress-nginx

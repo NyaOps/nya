@@ -50,7 +50,7 @@ pub async fn create_ssh_session(node: &BaseNodeConfig) -> Session {
 }
 
 pub async fn run_on_node(session: &Session, command: &str) -> NodeCommandResult {
-    match session.command("sh")
+    match session.command("bash")
         .arg("-c")
         .arg(command)
         .output()
@@ -72,7 +72,7 @@ pub async fn run_on_node(session: &Session, command: &str) -> NodeCommandResult 
 }
 
 pub async fn get_from_node(session: &Session, command: &str) -> Result<String, String> {
-    match session.command("sh")
+    match session.command("bash")
         .arg("-c")
         .arg(command)
         .output()

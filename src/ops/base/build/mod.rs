@@ -1,5 +1,5 @@
 use crate::core::service::{Service, ServiceActions, handle_action};
-use crate::ops::base::build::cluster::{complete_cluster, register_node, setup_bind9, setup_helm, setup_tls};
+use crate::ops::base::build::cluster::{complete_cluster, register_node, setup_bind9, setup_helm, setup_tls, on_build_complete};
 use crate::ops::base::build::control_plane::build_control_plane_action;
 use crate::ops::base::build::prebuild::{prebuild_action, run_prebuild_script};
 pub(crate) mod prebuild;
@@ -23,6 +23,7 @@ impl Service for NyaBaseBuild {
       (String::from("setupHelm"), handle_action(setup_helm)),
       (String::from("setupTLS"), handle_action(setup_tls)),
       (String::from("onClusterReady"), handle_action(ingress::setup_ingress)),
+      (String::from("onBuildComplete"), handle_action(on_build_complete)),
     ]
   }
 }

@@ -4,7 +4,8 @@
       "onPreBuild",
       "onBuildControlPlane",
       "onCompleteCluster",
-      "onClusterReady"
+      "onClusterReady",
+      "onBuildComplete"
     ]
   },
   "base:destroy": {
