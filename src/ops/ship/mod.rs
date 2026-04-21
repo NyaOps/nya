@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, process::Stdio};
+use std::{env, process::Stdio};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
@@ -25,12 +25,9 @@ struct PackContext {
 
 async fn build_packs(nya: Nya, _: Payload) {
   let base_vars = nya.get("nya.control_plane.vars").await;
-  let capsule_path = nya.get("capsule_path").await;
   let capsule = nya.get("capsule").await;
   let packs = capsule["packs"].as_array().unwrap();
-  let capsule_path_buf = PathBuf::from(&capsule_path.as_str().unwrap());
-  let dot_path = capsule_path_buf.parent().unwrap();
-  let src_path = dot_path.parent().unwrap();
+  let capsule_path = nya.capsule_path().unwrap();
   let registry_host = base_vars["registry_host"].as_str().unwrap();
 
   let mut pack_ctx: Vec<PackContext> = vec![];
@@ -39,7 +36,7 @@ async fn build_packs(nya: Nya, _: Payload) {
   for pack in packs.iter() {
     let pack_name = pack["name"].as_str().unwrap().to_string();
     let pack_location = pack["location"].as_str().unwrap();
-    let full_path = src_path.join(pack_location);
+    let full_path = capsule_path.join(pack_location);
     let path_str = full_path.display().to_string();
     let image_name = format!("{}/{}:latest", registry_host, pack_name);
 

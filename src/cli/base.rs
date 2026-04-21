@@ -1,26 +1,27 @@
+use std::path::PathBuf;
 use crate::core::runtime::Nya;
-use crate::utils::{resolve_base_config, ConfigStatus};
+use crate::utils::{verify_base_config, ConfigStatus};
 
-pub async fn build(config: Option<String>) {
-  let valid_path = resolve_base_config(config.as_deref());
-  let path = match valid_path {
+pub async fn build(config: Option<PathBuf>) {
+  let input_path = verify_base_config(config);
+  let path = match input_path {
     ConfigStatus::Exists(path) => path,
-    ConfigStatus::Missing(path) => {
-      println!("No config found at {}. Please create a config file to proceed.", path.display());
+    ConfigStatus::Missing(result) => {
+      println!("No config found at {}. Please create a config file to proceed.", result.0.display());
       return;
-    }
+    },
   };
-  Nya::run("base:build", vec![&path.display().to_string()]).await;
+  Nya::run("base:build", path, None).await;
 }
 
-pub async fn destroy(config: Option<String>) {
-  let valid_path = resolve_base_config(config.as_deref());
+pub async fn destroy(config: Option<PathBuf>) {
+  let valid_path = verify_base_config(config);
   let path = match valid_path {
     ConfigStatus::Exists(path) => path,
-    ConfigStatus::Missing(path) => {
-      println!("No config found at {}. Please create a config file to proceed.", path.display());
+    ConfigStatus::Missing(result) => {
+      println!("No config found at {}. Please create a config file to proceed.", result.0.display());
       return;
     }
   };
-  Nya::run("base:destroy", vec![&path.display().to_string()]).await;
+  Nya::run("base:destroy", path, None).await;
 }

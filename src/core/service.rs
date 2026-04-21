@@ -43,8 +43,9 @@ use crate::{core::{payload::Payload, service::{handle_action, Service, Action, S
 
   #[tokio::test]
   async fn can_create_action() {
+    use std::path::PathBuf;
     let new_svc_fn: Action = handle_action(test_fn);
-    let test_nya = Nya::build("test_cmd", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let test_nya = Nya::build("test_cmd", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     new_svc_fn(test_nya.clone(), Payload::empty()).await;
     let value_json = test_nya.get("test_key").await;
     let value = value_json.as_str().unwrap();

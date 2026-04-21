@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
@@ -13,7 +14,7 @@ pub struct Cli {
 pub enum Commands {
   Init {
     #[arg(short, long)]
-    output: Option<String>,
+    output: Option<PathBuf>,
   },
 
   Base {
@@ -33,10 +34,10 @@ pub enum Commands {
   
   Ship {
     #[arg(short, long)]
-    config: Option<String>,
+    config: Option<PathBuf>,
 
     #[arg(short, long)]
-    location: Option<String>,
+    location: Option<PathBuf>,
   },
 }
 
@@ -44,11 +45,11 @@ pub enum Commands {
 pub enum BaseCommands {
   Build {
     #[arg(short, long)]
-    config: Option<String>,
+    config: Option<PathBuf>,
   },
   Destroy{
     #[arg(short, long)]
-    config: Option<String>,
+    config: Option<PathBuf>,
   },
 }
 
@@ -56,7 +57,7 @@ pub enum BaseCommands {
 pub enum CapsuleCommands {
   New {
     #[arg(short, long)]
-    config: Option<String>,
+    config: Option<PathBuf>,
   },
 }
 
@@ -64,6 +65,6 @@ pub enum CapsuleCommands {
 pub enum PackCommands {
   New {
     #[arg(short, long)]
-    capsule: Option<String>,
+    capsule: Option<PathBuf>,
   },
 }

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs::read_to_string
 };
+use std::path::PathBuf;
 use serde_json::Value;
 use tera::Map;
 
@@ -8,39 +9,48 @@ pub struct NyaContext {
 }
 
 impl NyaContext {
-  pub fn new(file_paths: Vec<&str>) -> Self {
+  pub fn new(config: PathBuf, capsule: Option<PathBuf>) -> Self {
       Self {
-          context: build_context(file_paths).expect("context load failed")
+          context: build_context(config, capsule).expect("context load failed")
       }
   }
 }
 
-pub fn build_context(paths: Vec<&str>) -> Result<HashMap<String, Value>, String> {
+pub fn build_context(config: PathBuf, capsule: Option<PathBuf>) -> Result<HashMap<String, Value>, String> {
   let mut context: Map<String, Value> = Map::new();
+
+  let paths: Vec<PathBuf> = {
+    let mut v = vec![config];
+    if let Some(c) = capsule {
+      v.push(c);
+    }
+    v
+  };
+
   for path in paths {
-    let content = read_to_string(path)
-      .map_err(|e| format!("Failed to read context file '{}': {}", path, e))?; 
+    let content = read_to_string(&path)
+      .map_err(|e| format!("Failed to read context file '{}': {}", path.display(), e))?;
     let json: Value = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse {}: {}", path, e))?;
-    
-    // Merge top-level keys
+      .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
+
     if let Value::Object(map) = json {
-        for (key, value) in map {
-            context.insert(key, value);
-        }
+      for (k, value) in map {
+          context.insert(k, value);
+      }
     }
   }
-
   Ok(context.into_iter().collect())
 }
 
 #[cfg(test)]
 mod context_tests {
+  use std::path::PathBuf;
   use crate::core::context::NyaContext;
 
   #[test]
   fn get_nya_context_returns_context() -> Result<(), String> {
-    let nya_context = NyaContext::new(vec!["./tests/nya_test_config.json"]);
+    let path = PathBuf::from("./tests/nya_test_config.json");
+    let nya_context = NyaContext::new(path, None);
   
     let test_value = nya_context.context.get("test")
       .and_then(|v| v.as_str())
@@ -53,12 +63,9 @@ mod context_tests {
 
   #[test]
   fn can_build_nya_context_from_multiple_locations() -> Result<(), String> {
-    let file_paths = vec![
-      "./tests/nya_test_config.json", 
-      "./tests/nya_test_capsule.json"
-    ];
-
-    let nya_context = NyaContext::new(file_paths);
+    let config_path = PathBuf::from("./tests/nya_test_config.json");
+    let capsule_path = PathBuf::from("./tests/nya_test_capsule.json");
+    let nya_context = NyaContext::new(config_path, Some(capsule_path));
   
     let test_value = nya_context.context.get("test")
       .and_then(|v| v.as_str())

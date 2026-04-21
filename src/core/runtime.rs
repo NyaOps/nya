@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
@@ -10,6 +11,8 @@ struct NyaInternals {
   schema: NyaSchema,
   bus: Arc<NyaEventBus>,
   task_tracker: TaskTracker,
+  base_config_path: PathBuf,
+  capsule_path: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -18,20 +21,27 @@ pub struct Nya {
 }
 
 impl Nya {
-  pub async fn run(cmd: &str, file_paths: Vec<&str>) {
+  pub async fn run(cmd: &str, config: PathBuf, capsule: Option<PathBuf>) {
     let services = get_core_services();
-    let nya = Nya::build(cmd, file_paths, services);
-    let initial_payload = Payload::empty();
-    nya.execute(initial_payload).await;
+    let nya = Nya::build(cmd, config, capsule, services);
+    nya.execute(Payload::empty()).await;
   }
-  
-  pub fn build(cmd: &str, file_paths: Vec<&str>, reg: Vec<Box<dyn Service>>) -> Self {
+
+  pub fn build(cmd: &str, config: PathBuf, capsule: Option<PathBuf>, reg: Vec<Box<dyn Service>>) -> Self {
     let nya_event_bus = build_nya_bus(reg);
-    let ctx = NyaContext::new(file_paths);
+    let ctx = NyaContext::new(config.clone(), capsule.clone());
     let schema = NyaSchema::new(cmd);
-      Self {
-        internals: Arc::new(NyaInternals { context: Arc::new(Mutex::new(ctx)), schema: schema, bus: Arc::new(nya_event_bus), task_tracker: TaskTracker::new() }
-      )
+    let internals = NyaInternals {
+      context: Arc::new(Mutex::new(ctx)),
+      schema,
+      bus: Arc::new(nya_event_bus),
+      task_tracker: TaskTracker::new(),
+      base_config_path: config.clone(),
+      capsule_path: capsule.clone()
+    };
+
+    Self {
+      internals: Arc::new(internals)
     }
   }
 
@@ -71,6 +81,14 @@ impl Nya {
       self.trigger(event, payload).await;
     }
   }
+  
+  pub fn base_config_path(&self) -> &Path {
+    &self.internals.base_config_path
+  }
+
+  pub fn capsule_path(&self) -> Option<&Path> {
+    self.internals.capsule_path.as_deref()
+  }
 }
 
 fn build_nya_bus(reg: Vec<Box<dyn Service>>) -> NyaEventBus {
@@ -85,18 +103,19 @@ fn build_nya_bus(reg: Vec<Box<dyn Service>>) -> NyaEventBus {
   nya_event_bus
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 mod nya_tests {
+    use std::path::PathBuf;
     use crate::{core::{payload::Payload, service::service_tests::TestService, runtime::Nya}};
 
   #[test]
   fn can_build_nya() {
-    let _ = Nya::build("test_cmd", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let _ = Nya::build("test_cmd", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
   }
 
   #[tokio::test]
   async fn can_run_nya_schema() {
-    let nya = Nya::build("test_cmd2", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     nya.execute(Payload::empty()).await;
     tokio::task::yield_now().await;
     let ctx = nya.internals.context.lock().await;
@@ -106,7 +125,7 @@ mod nya_tests {
 
 #[tokio::test]
   async fn can_get_value_from_nya() {
-    let nya = Nya::build("test_cmd2", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     nya.execute(Payload::empty()).await;
     tokio::task::yield_now().await;
     let nya_val = &nya.get("test_key").await;
@@ -115,7 +134,7 @@ mod nya_tests {
 
   #[tokio::test]
   async fn can_set_value_on_nya() {
-    let nya = Nya::build("test_cmd2", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     let _ = &nya.set("test_key", "test_value").await;
     let nya_val = &nya.get("test_key").await;
     let val1 = nya_val.as_str().unwrap();
@@ -124,7 +143,7 @@ mod nya_tests {
 
   #[tokio::test]
   async fn can_trigger_nya_event() {
-    let nya = Nya::build("test_cmd2", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let nya = Nya::build("test_cmd2", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     {
       nya.trigger("test", Payload::empty()).await;
     }

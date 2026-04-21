@@ -41,6 +41,7 @@ impl EventBus for NyaEventBus {
 
 #[cfg(test)]
 mod event_bus_tests{
+  use std::path::PathBuf;
   use serde_json::{from_value, Value};
 
 use crate::{core::
@@ -65,7 +66,7 @@ use crate::{core::
     let svc = Box::new(TestService);
     let handler= svc.register()[0].1.clone();
     let event_name = svc.register()[0].0.clone();
-    let test_nya = Nya::build("test_cmd", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let test_nya = Nya::build("test_cmd", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     {
       event_bus.on(event_name.clone(), handler);
       event_bus.emit(test_nya.clone(), event_name, Payload::empty()).await;
@@ -82,7 +83,7 @@ use crate::{core::
     let svc = Box::new(TestService);
     let handler= svc.register()[0].1.clone();
     let event_name = svc.register()[0].0.clone();
-    let test_nya = Nya::build("test_cmd", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+    let test_nya = Nya::build("test_cmd", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     {
       event_bus.on(event_name.clone(), handler);
       event_bus.emit(test_nya.clone(), "fake_event".to_string(), Payload::empty()).await;
