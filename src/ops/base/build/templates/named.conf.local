@@ -1,0 +1,5 @@
+zone "{{ domain_name }}" {
+    type master;
+    file "/etc/bind/zones/db.{{ domain_name }}";
+    allow-update { none; };
+};

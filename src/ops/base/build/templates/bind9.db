@@ -1,0 +1,11 @@
+$TTL    60
+@       IN      SOA     {{ domain_name }}. admin.{{ domain_name }}. (
+                     2023011801         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      {{ domain_name }}.
+@       IN      A       {{ control_plane_ip }}
+*       IN      A       {{ control_plane_ip }}

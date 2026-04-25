@@ -1,35 +1,27 @@
-use crate::{
-  core::{
-    core_services::nya_core::get_core_services, payload::Payload, service::Service
-  }, 
-  runtime::nya::Nya,
-  utils::{self, ConfigStatus}
-};
+use std::path::PathBuf;
+use crate::core::runtime::Nya;
+use crate::utils::{verify_base_config, ConfigStatus};
 
-pub async fn build(config: Option<String>) {
-  let valid_path = utils::resolve_base_config(config.as_deref());
-  let path = match valid_path {
+pub async fn build(config: Option<PathBuf>) {
+  let input_path = verify_base_config(config);
+  let path = match input_path {
     ConfigStatus::Exists(path) => path,
-    ConfigStatus::Missing(path) => {
-      println!("No config found at {}. Please create a config file to proceed.", path.display());
+    ConfigStatus::Missing(result) => {
+      println!("No config found at {}. Please create a config file to proceed.", result.0.display());
       return;
-    }
+    },
   };
-  let services: Vec<Box<dyn Service>> = get_core_services();
-  let nya = Nya::build("base:build", vec![&path.display().to_string()], services);
-  nya.run(Payload::empty()).await;
+  Nya::run("base:build", path, None).await;
 }
 
-pub async fn destroy(config: Option<String>) {
-  let valid_path = utils::resolve_base_config(config.as_deref());
+pub async fn destroy(config: Option<PathBuf>) {
+  let valid_path = verify_base_config(config);
   let path = match valid_path {
     ConfigStatus::Exists(path) => path,
-    ConfigStatus::Missing(path) => {
-      println!("No config found at {}. Please create a config file to proceed.", path.display());
+    ConfigStatus::Missing(result) => {
+      println!("No config found at {}. Please create a config file to proceed.", result.0.display());
       return;
     }
   };
-  let services: Vec<Box<dyn Service>> = get_core_services();
-  let nya = Nya::build("base:destroy", vec![&path.display().to_string()], services);
-  nya.run(Payload::empty()).await;
+  Nya::run("base:destroy", path, None).await;
 }

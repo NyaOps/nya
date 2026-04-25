@@ -1,9 +1,0 @@
-# embedded/metallb/ipaddresspool.yaml
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: nya-pool
-  namespace: metallb-system
-spec:
-  addresses:
-  - {{ registry_host_ip }}/32

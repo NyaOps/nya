@@ -1,9 +1,10 @@
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 use colored::*;
 use inquire::Text;
 use serde::Serialize;
 use serde_json::Value;
-use crate::{cli::pack::Pack, utils};
+use crate::{cli::pack::Pack, defaults, utils};
+use crate::utils::ConfigStatus;
 
 #[derive(Serialize, Debug)]
 pub struct CapsuleData {
@@ -23,17 +24,17 @@ enum CreateNewCapsuleResult {
     Error(String),
 }
 
-pub fn new(output_path: Option<String>) {
-  let file_path = utils::resolve_capsule(output_path.as_deref());
+pub fn new(user_input: Option<PathBuf>) {
+  let file_path = utils::verify_capsule(user_input);
   match file_path {
-    Some(path) => {
+    ConfigStatus::Exists(path) => {
       println!("{}", "Cannot create a new Capsule, a nya.json file already exists!".red());
       println!("Location: {}", path.display());
       println!("You can input a different path by running {}", "nya init -o your_path_here".purple());
       println!("Otherwise, remove the existing file first.");
     },
-    None => {
-      let result = create_new_capsule_file(output_path);
+    ConfigStatus::Missing(result) => {
+      let result = create_new_capsule_file(result.0);
       match result {
         CreateNewCapsuleResult::Success(path) => {
           println!("Created new Capsule file at: {}", path.display());
@@ -46,7 +47,7 @@ pub fn new(output_path: Option<String>) {
   }
 }
 
-fn create_new_capsule_file(output_path: Option<String>) -> CreateNewCapsuleResult {
+fn create_new_capsule_file(output_path: PathBuf) -> CreateNewCapsuleResult {
   let name = Text::new("What do you want to call this capsule?")
       .prompt();
   let name = match name {
@@ -56,7 +57,7 @@ fn create_new_capsule_file(output_path: Option<String>) -> CreateNewCapsuleResul
   
   let capsule: CapsuleData = CapsuleData {
     capsule: Capsule {
-        name: name,
+        name,
         created_at: chrono::Utc::now().to_rfc3339(),
         updated_at: chrono::Utc::now().to_rfc3339(),
         packs: Vec::new()
@@ -72,7 +73,6 @@ fn create_new_capsule_file(output_path: Option<String>) -> CreateNewCapsuleResul
   };
     
   let file_path = get_capsule_path(output_path);
-  
 
   if let Some(parent) = file_path.parent() {
       fs::create_dir_all(parent).expect("Failed to create directories");
@@ -84,37 +84,32 @@ fn create_new_capsule_file(output_path: Option<String>) -> CreateNewCapsuleResul
 
 }
 
-pub fn check(path: Option<String>){
-  let exists = utils::resolve_capsule(path.as_deref()).is_some();
-  if exists {
-    let current_capsule = read_capsule_file(path);
-    println!("{}", "A Capsule file exists in this directory.".green());
-    if let Some(capsule) = current_capsule {
-      println!("Capsule name: {}", capsule["capsule"]["name"]);
+pub fn check(path: Option<PathBuf>){
+  let exists = utils::verify_capsule(path);
+  match exists {
+    ConfigStatus::Exists(path) => {
+      let current_capsule = read_capsule_file(path);
+      println!("{}", "A Capsule file exists in this directory.".green());
+      if let Some(capsule) = current_capsule {
+        println!("Capsule name: {}", capsule["capsule"]["name"]);
+      }
+    },
+    ConfigStatus::Missing(_) => {
+      println!("{}", "No Capsule file found in this directory.".yellow());
     }
-  } else {
-    println!("{}", "No Capsule file found in this directory.".yellow());
   }
 }
 
-fn get_capsule_path(path: Option<String>) -> PathBuf {
-  let mut file_path = PathBuf::from(if let Some(input) = path {
-    let expanded = shellexpand::tilde(&input).to_string();
-    expanded.into()
-  } else {
-    env::current_dir().unwrap()
-  });
-
-  if file_path.display().to_string().contains(".nya/nya.json") {
-    return file_path;
+fn get_capsule_path(path: PathBuf) -> PathBuf {
+  if path.display().to_string().contains(".nya/nya.json") {
+    return path;
   }
 
-  file_path.push(".nya");
-  file_path.push("nya.json");
-  file_path
+  let full_path = path.join(defaults::CAPSULE_DEFAULT_FILE_DIR_AND_NAME);
+  full_path
 }
 
-pub fn read_capsule_file(path: Option<String>) -> Option<Value> {
+pub fn read_capsule_file(path: PathBuf) -> Option<Value> {
   let file_path = get_capsule_path(path);
   let content = fs::read_to_string(file_path).ok()?;
   serde_json::from_str(&content).ok()

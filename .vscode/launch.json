@@ -17,7 +17,7 @@
                 ]
             },
             "args": ["base", "build", "-c", "."],
-            "cwd": "${workspaceFolder}/tests/integration"
+            "cwd": "${workspaceFolder}/tests/cli"
         },
         {
             "type": "lldb",
@@ -31,7 +31,7 @@
                 ]
             },
             "args": ["capsule", "new"],
-            "cwd": "${workspaceFolder}/tests/integration"
+            "cwd": "${workspaceFolder}/tests/cli"
         },
         {
             "type": "lldb",
@@ -45,7 +45,21 @@
                 ]
             },
             "args": ["pack", "new"],
-            "cwd": "${workspaceFolder}/tests/integration"
+            "cwd": "${workspaceFolder}/tests/cli"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "nya ship",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nya",
+                    "--package=nya"
+                ]
+            },
+            "args": ["ship"],
+            "cwd": "${workspaceFolder}/tests/cli"
         }
     ]
 }

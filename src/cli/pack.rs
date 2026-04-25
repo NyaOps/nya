@@ -1,11 +1,12 @@
 use std::{fs};
-
+use std::path::PathBuf;
 use colored::*;
 use inquire::{Select, Text};
 use serde::Serialize;
 use serde_json::json;
 use tera::{Context, Tera};
-use crate::{cli::{capsule::read_capsule_file}, embedded, utils};
+use crate::{cli::{capsule::read_capsule_file}, utils};
+use crate::utils::ConfigStatus;
 
 #[derive(Serialize, Debug)]
 pub struct Pack {
@@ -17,18 +18,18 @@ pub struct Pack {
   port: Option<u16>,
 }
 
-pub fn new(capsule: Option<String>) {
-  let capsule_path_buf  = utils::resolve_capsule(capsule.as_deref());
+pub fn new(capsule: Option<PathBuf>) {
+  let capsule_path_buf  = utils::verify_capsule(capsule);
   let capsule_path = match capsule_path_buf {
-    Some(buf) =>  buf,
-    None => {
+    ConfigStatus::Exists(path) => path,
+    ConfigStatus::Missing(result)=> {
       println!("{}", "No Capsule found. Please navigate to your Capsule".yellow());
-      println!("You can create one by running {}", "nya capsule new -c your_capsule_path_here".purple());
+      println!("You can create one by running {}{}", "nya capsule new -c ".purple(), result.0.display().to_string().purple());
       return;
     }
   };
 
-  let mut capsule = read_capsule_file(Some(capsule_path.display().to_string())).unwrap();
+  let mut capsule = read_capsule_file(capsule_path.clone()).unwrap();
   let current_packs: Vec<String> = capsule["capsule"]["packs"]
         .as_array()
         .unwrap_or(&vec![])
@@ -72,8 +73,8 @@ pub fn new(capsule: Option<String>) {
   };
 
   let pack_values_content = match pack_type {
-    "frontend" => embedded::PACK_FRONTEND_VALUES_TEMPLATE,
-    "backend" => embedded::PACK_BACKEND_VALUES_TEMPLATE,
+    "frontend" => include_str!("../../src/ops/pack/values.frontend.yaml"),
+    "backend" => include_str!("../../src/ops/pack/values.backend.yaml"),
     _ => { 
       print!("There was an issue with getting the values for your pack. Please try again.");
       return;
@@ -114,7 +115,7 @@ pub fn new(capsule: Option<String>) {
     return
   }
 
-  if let Err(e) = fs::write(dockerfile_path, embedded::PACK_DOCKERFILE_TEMPLATE) {
+  if let Err(e) = fs::write(dockerfile_path, include_str!("../../src/ops/pack/Dockerfile")) {
       println!("Failed to create config file at {}: {}", &pack_path_buf.display(), e);
       return;
   }
@@ -126,5 +127,6 @@ pub fn new(capsule: Option<String>) {
 
   println!("{}", format!("✓ Created pack: {}", name).green());
   println!("Location: {}", &pack_path_buf.display());
-  println!("Edit your Dockerfile, then run: {}", "nya pack deploy".purple());
+  //TODO: single pack deployments
+  //println!("Edit your Dockerfile, then run: {}", "nya pack deploy".purple());
 }

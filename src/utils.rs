@@ -1,49 +1,57 @@
 use std::{env, path::PathBuf, process::Stdio};
-
 use tokio::process::Command;
 
 use crate::defaults;
 
 pub enum ConfigStatus {
     Exists(PathBuf),
-    Missing(PathBuf),
+    Missing((PathBuf, String)),
 }
 
-pub fn resolve_base_config(user_input: Option<&str>) -> ConfigStatus {
-    let path = if let Some(input) = user_input {
-        let expanded = shellexpand::tilde(input).to_string();
-        PathBuf::from(expanded)
+
+pub fn verify_base_config(user_input: Option<PathBuf>) -> ConfigStatus {
+    let input_path = if let Some(input) = user_input {
+        input
     } else {
-        let expanded = shellexpand::tilde(defaults::BASE_CONFIG_DEFAULT_LOCATION).to_string();
-        PathBuf::from(expanded)
+        defaults::base_config_default_location()
     };
     
-    let final_path = if path.is_dir() {
-        path.join(defaults::BASE_CONFIG_DEFAULT_FILE_NAME)
+    let full_path = if input_path.is_dir() {
+        input_path.join(defaults::BASE_CONFIG_DEFAULT_FILE_NAME)
     } else {
-        path
+        input_path
     };
     
-    if !final_path.exists() {
-        return ConfigStatus::Missing(final_path);
+    if !full_path.exists() {
+        return ConfigStatus::Missing((full_path, "".to_string()));
     }
     
-    ConfigStatus::Exists(final_path)
+    ConfigStatus::Exists(full_path)
 }
 
-pub fn resolve_capsule(user_input: Option<&str>) -> Option<PathBuf> {
-    let path = if let Some(input) = user_input {
-        let expanded = shellexpand::tilde(input).to_string();
-        PathBuf::from(expanded)
+pub fn verify_capsule(user_input: Option<PathBuf>) -> ConfigStatus {
+    let fallback_dir;
+    let input_path: PathBuf = if let Some(input) = user_input {
+        input
     } else {
-        env::current_dir().ok()?.join(".nya").join("nya.json")
+        fallback_dir = match env::current_dir() {
+            Ok(p) => p,
+            Err(e) => return ConfigStatus::Missing((PathBuf::new(), e.to_string())),
+        };
+        fallback_dir
     };
-    
-    if path.exists() {
-        Some(path)
+
+    let full_path = if input_path.is_dir() {
+        input_path.join(defaults::CAPSULE_DEFAULT_FILE_DIR_AND_NAME)
     } else {
-        None  // Optional, so just return None
+        input_path
+    };
+
+    if !full_path.exists() {
+        return ConfigStatus::Missing((full_path, "".to_string()));
     }
+
+    ConfigStatus::Exists(full_path)
 }
 
 pub fn generate_sha(location: &str) -> String {

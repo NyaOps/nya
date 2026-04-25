@@ -26,3 +26,6 @@ target
 /target
 
 *node_modules
+
+*.idea*
+*.claude*

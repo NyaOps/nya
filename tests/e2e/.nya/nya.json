@@ -1,0 +1,25 @@
+{
+  "capsule": {
+    "name": "full-test",
+    "created_at": "2026-04-25T18:05:58.090589+00:00",
+    "updated_at": "2026-04-25T18:06:36.965402+00:00",
+    "packs": [
+      {
+        "name": "fe",
+        "pack_type": "frontend",
+        "location": "fe",
+        "created_at": "2026-04-25T18:06:18.298627+00:00",
+        "updated_at": "2026-04-25T18:06:18.298883+00:00",
+        "port": null
+      },
+      {
+        "name": "be",
+        "pack_type": "backend",
+        "location": "be",
+        "created_at": "2026-04-25T18:06:36.961985+00:00",
+        "updated_at": "2026-04-25T18:06:36.962182+00:00",
+        "port": 80
+      }
+    ]
+  }
+}

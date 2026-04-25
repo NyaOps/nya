@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use futures::{future::BoxFuture, FutureExt};
-use crate::{core::payload::Payload, runtime::{nya::Nya}};
+use crate::{core::{payload::Payload, runtime::Nya}};
 
-pub type ServiceFunction = Arc<dyn Fn(Nya, Payload) -> BoxFuture<'static, ()> + Send + Sync>;
-pub type ServiceRegister = Vec<(String, ServiceFunction)>;
+pub type Action = Arc<dyn Fn(Nya, Payload) -> BoxFuture<'static, ()> + Send + Sync>;
+pub type ServiceActions = Vec<(String, Action)>;
 
-pub fn handle_function<F, Fut>(f: F) -> ServiceFunction
+pub fn handle_action<F, Fut>(f: F) -> Action
 where
     F: Fn(Nya, Payload) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = ()> + Send + 'static, {
@@ -14,13 +14,13 @@ where
 
 pub trait Service: Send + Sync + 'static {
     fn name(&self) -> String;
-    fn register(&self) -> ServiceRegister;
+    fn register(&self) -> ServiceActions;
 }
 
 #[cfg(test)]
 pub mod service_tests{
 
-use crate::{core::{payload::Payload, service::{handle_function, Service, ServiceFunction, ServiceRegister}}, runtime::nya::Nya};
+use crate::{core::{payload::Payload, service::{handle_action, Service, Action, ServiceActions}, runtime::Nya}};
 
   pub async fn test_fn(nya: Nya, _: Payload) {
     nya.set("test_key", serde_json::Value::String("test_value".to_string())).await;
@@ -32,19 +32,20 @@ use crate::{core::{payload::Payload, service::{handle_function, Service, Service
   pub struct TestService;
   impl Service for TestService {
     fn name(&self) -> String { "Test Service".to_string()}
-    fn register(&self) -> ServiceRegister {
+    fn register(&self) -> ServiceActions {
         vec![
-          ("test".to_string(), handle_function(test_fn)),
-          ("test".to_string(), handle_function(test_fn2))
+          ("test".to_string(), handle_action(test_fn)),
+          ("test2".to_string(), handle_action(test_fn2))
         ]
     }
   }
   
 
   #[tokio::test]
-  async fn can_create_service_function() {
-    let new_svc_fn: ServiceFunction = handle_function(test_fn);
-    let test_nya = Nya::build("test_cmd", vec!["./tests/nya_test_config.json"], vec![Box::new(TestService)]);
+  async fn can_create_action() {
+    use std::path::PathBuf;
+    let new_svc_fn: Action = handle_action(test_fn);
+    let test_nya = Nya::build("test_cmd", PathBuf::from("./tests/nya_test_config.json"), None, vec![Box::new(TestService)]);
     new_svc_fn(test_nya.clone(), Payload::empty()).await;
     let value_json = test_nya.get("test_key").await;
     let value = value_json.as_str().unwrap();
