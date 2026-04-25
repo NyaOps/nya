@@ -13,7 +13,7 @@ pub fn verify_base_config(user_input: Option<PathBuf>) -> ConfigStatus {
     let input_path = if let Some(input) = user_input {
         input
     } else {
-        PathBuf::from(defaults::BASE_CONFIG_DEFAULT_LOCATION)
+        defaults::base_config_default_location()
     };
     
     let full_path = if input_path.is_dir() {

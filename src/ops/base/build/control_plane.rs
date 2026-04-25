@@ -4,9 +4,7 @@ use openssh::Session;
 use tera::Context;
 use types::BaseNodeConfig;
 use utils::create_ssh_session;
-
 const INSTALL_K3S_SCRIPT: &str = include_str!("scripts/install_k3s.sh");
-const INSTALL_K3S_CLOUD_SCRIPT: &str = include_str!("scripts/install_k3s_cloud.sh");
 const K3S_REGISTRIES_TEMPLATE: &str = include_str!("templates/registries.yaml");
 const INSTALL_HELM_SCRIPT: &str = include_str!("scripts/install_helm.sh");
 
@@ -20,37 +18,31 @@ struct K3sScriptContext {
 pub async fn build_control_plane_action(nya: Nya, _: Payload) {
   println!("Building the control plane");
 
-  let control_plane_vars = nya.get("nya.control_plane.vars").await;
-  let control_plane_type = control_plane_vars.get("control_plane_type").and_then(|v| v.as_str()).unwrap();
-
   let control_plane_config: BaseNodeConfig = get_control_plane_config(nya.clone()).await;
   let k3s_token: String = nya.get("k3s_token").await.as_str().unwrap_or("").to_string();
   let registry_host: String = nya.get("nya.registry_host").await.as_str().unwrap_or("").to_string();
   let control_plane_context = K3sScriptContext {
     control_plane_ip: control_plane_config.host.clone(),
-    k3s_token: k3s_token,
-    registry_host: registry_host,
+    k3s_token,
+    registry_host,
   };
 
   let context_value = serde_json::to_value(&control_plane_context).unwrap();
   let tera_context = Context::from_serialize(&context_value).unwrap();
-  let k3s_script = if control_plane_type == "cloud" { INSTALL_K3S_CLOUD_SCRIPT } else { INSTALL_K3S_SCRIPT };
-  let rendered_script = tera::Tera::one_off(k3s_script, &tera_context, false).unwrap();
+  let rendered_script = tera::Tera::one_off(INSTALL_K3S_SCRIPT, &tera_context, false).unwrap();
   let rendered_registries = tera::Tera::one_off(K3S_REGISTRIES_TEMPLATE, &tera_context, false).unwrap();
 
   let session: Session = create_ssh_session(&control_plane_config).await;
 
-  // if the control_plane_type is "bare_metal", we need to get the network_cidr first to set it in the context for later
-  if control_plane_type == "bare_metal" {
-    let cidr_result = get_from_node(
-        &session, 
-        "ip route | grep -v default | awk '{print $1}' | head -1"
-    ).await;
-    match cidr_result {
-        Ok(cidr) => nya.set("network_cidr", cidr.trim()).await,
-        Err(e) => eprintln!("Failed to detect network CIDR: {}", e)
-    }
+  let cidr_result = get_from_node(
+      &session,
+      "ip route | grep -v default | awk '{print $1}' | head -1"
+  ).await;
+  match cidr_result {
+      Ok(cidr) => nya.set("network_cidr", cidr.trim()).await,
+      Err(e) => eprintln!("Failed to detect network CIDR: {}", e)
   }
+
   if !Check::run(CheckIf::K3sIsInstalled, &session).await {
     let k3s_install_result: NodeCommandResult = run_on_node(&session, &rendered_script).await;
     match k3s_install_result {

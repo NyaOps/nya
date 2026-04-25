@@ -127,5 +127,6 @@ pub fn new(capsule: Option<PathBuf>) {
 
   println!("{}", format!("✓ Created pack: {}", name).green());
   println!("Location: {}", &pack_path_buf.display());
-  println!("Edit your Dockerfile, then run: {}", "nya pack deploy".purple());
+  //TODO: single pack deployments
+  //println!("Edit your Dockerfile, then run: {}", "nya pack deploy".purple());
 }

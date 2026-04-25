@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 (add image name here)
+FROM --platform=linux/amd64 (add image name here)
 WORKDIR /src
 COPY . .
 RUN (add install command here)

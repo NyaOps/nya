@@ -1,4 +1,4 @@
-$TTL    604800
+$TTL    60
 @       IN      SOA     {{ domain_name }}. admin.{{ domain_name }}. (
                      2023011801         ; Serial
                          604800         ; Refresh

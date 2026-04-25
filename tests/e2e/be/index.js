@@ -5,7 +5,7 @@ const app = express();
 app.use(cors());
 
 app.get('/hello', (req, res) => {
-    res.json("Hello World!");
+    res.json("Hello World E2E!");
 });
 
 app.get('/:data', (req, res) => {
@@ -13,7 +13,7 @@ app.get('/:data', (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
     console.log(`Backend server is running on port ${PORT}`);
 });

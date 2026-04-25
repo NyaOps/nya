@@ -23,7 +23,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-  - {{ network_cidr }}
+  - {{ metallb_ip_range }}
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement

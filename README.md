@@ -139,7 +139,6 @@ You should now see a new directory created with the name of your pack. The direc
 ```bash
 ✓ Created pack: test-pack
 Location: /Users/_user_/.../test/test-pack
-Edit your Dockerfile, then run: nya pack deploy
 ```
 > Note: Wherever you place your capsule, the expectation is that the capsule will be the parent directory of all of its packs. If you decide to place the pack files in a different place, you'll have to manage the location yourself in the `nya.json` file. 
 

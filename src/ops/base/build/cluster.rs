@@ -5,14 +5,17 @@ use openssh::Session;
 use tera::Context;
 use serde_json::Value;
 use include_dir::{include_dir, Dir};
+use base64::{Engine as _, engine::general_purpose};
 
-use crate::{core::{checks::{Check, CheckIf}, payload::{Payload, Take}, runtime::Nya}, ops::{types::{BaseNodeConfig, NodeCommandResult}, utils::{create_ssh_session, get_control_plane_config, get_node_configs, run_on_node}}};
+use crate::{core::{checks::{Check, CheckIf}, payload::{Payload, Take}, runtime::Nya}, ops::{types::{BaseNodeConfig, NodeCommandResult, ClusterBind9Context}, utils::{create_ssh_session, get_control_plane_config, get_node_configs, run_on_node}}};
+use crate::ops::utils::get_from_node;
 
 const K3S_REGISTRIES_TEMPLATE: &str = include_str!("templates/registries.yaml");
 const NAMED_CONF_LOCAL_TEMPLATE: &str = include_str!("templates/named.conf.local");
 const NAMED_CONF_OPTIONS_TEMPLATE: &str = include_str!("templates/named.conf.options");
 const BIND9_DB_TEMPLATE: &str = include_str!("templates/bind9.db");
 const HELM_DIR: Dir = include_dir!("src/ops/base/build/helm");
+const HELM_TEMPLATES_DIR: Dir = include_dir!("src/ops/base/build/helm/templates");
 
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -24,13 +27,6 @@ struct K3sAgentScriptContext {
 #[derive(serde::Serialize, Clone, Debug)]
 struct TLSScriptContext {
   domain: String,
-}
-
-#[derive(serde::Serialize, Clone, Debug)]
-struct ClusterBind9Context {
-  control_plane_ip: String,
-  network_cidr: String,
-  domain_name: String,
 }
 
 pub async fn complete_cluster(nya: Nya, _: Payload) {
@@ -51,8 +47,14 @@ pub async fn complete_cluster(nya: Nya, _: Payload) {
   let _ = nya.trigger("setupTLS", Payload::new(session_arc.clone())).await;
 }
 
-pub async fn on_build_complete(_nya: Nya, _: Payload) {
+pub async fn on_finish(_nya: Nya, _: Payload) {
+  let control_plane_config: BaseNodeConfig = get_control_plane_config(_nya.clone()).await;
   println!("{}", "Build completed successfully!".green());
+  println!("To trust the local CA cert, first install mkcert:");
+  println!(" brew install mkcert");
+  println!(" brew install nss # if you use Firefox");
+  println!("Then run \"mkcert -install\"");
+  println!("Or install it manually from: https://{}/ca.crt", control_plane_config.host);
   println!("You can now create a Capsule to deploy your apps to Nya by running: {}", "nya capsule new -c ./your_capsule_path".purple());
 }
 
@@ -60,9 +62,11 @@ pub async fn register_node(nya: Nya, payload: Payload) {
   let session_obj = payload.take::<(Session, BaseNodeConfig)>().unwrap();
   let control_plane_config: BaseNodeConfig = get_control_plane_config(nya.clone()).await;
   let k3s_token: String = nya.get("k3s_node_token").await.as_str().unwrap().to_string();
-  let k3s_install_cmd: String = format!("curl -sfL https://get.k3s.io | \
-  K3S_URL=https://{}:6443 \
-  K3S_TOKEN={} sh -", control_plane_config.host, k3s_token);
+  let k3s_install_cmd = format!(
+    "curl -sfL https://get.k3s.io | K3S_URL=https://{}:6443 K3S_TOKEN={} sh - > /tmp/k3s-install.log 2>&1",
+    control_plane_config.host, k3s_token
+  );
+  let k3s_wait_cmd = "sudo systemctl is-active --wait k3s-agent";
 
   let control_plane_context = K3sAgentScriptContext {
     control_plane_ip: control_plane_config.host.clone(),
@@ -74,16 +78,6 @@ pub async fn register_node(nya: Nya, payload: Payload) {
   let rendered_registries = tera::Tera::one_off(K3S_REGISTRIES_TEMPLATE, &tera_context, false).unwrap();
 
   if !Check::run(CheckIf::K3sAgentIsRunning, &session_obj.0).await {
-    println!("Installing K3s agent on node {} and registering with control plane...", session_obj.1.host);
-    let k3s_agent_install_result = run_on_node(&session_obj.0, &k3s_install_cmd).await;
-    match k3s_agent_install_result {
-      NodeCommandResult::Success => println!("K3s agent installed and registered successfully on node {}.", session_obj.1.host),
-      NodeCommandResult::Failure(err) => {
-        eprintln!("Failed to install/register K3s agent on node {}: {}", session_obj.1.host, err);
-        return;
-      },
-    }
-
     let create_k3s_dir_cmd: &str = "sudo mkdir -p /etc/rancher/k3s && sudo chmod 755 /etc/rancher/k3s";
     let create_dir_result: NodeCommandResult = run_on_node(&session_obj.0, create_k3s_dir_cmd).await;
     match create_dir_result {
@@ -94,12 +88,36 @@ pub async fn register_node(nya: Nya, payload: Payload) {
       },
     }
 
-    let registry_cmd: String = format!("echo '{}' | sudo tee /etc/rancher/k3s/registries.yaml", rendered_registries);
+    let encoded_registries = general_purpose::STANDARD.encode(&rendered_registries);
+    let registry_cmd = format!(
+      "echo '{}' | base64 -d | sudo tee /etc/rancher/k3s/registries.yaml",
+      encoded_registries
+    );
     let registry_result: NodeCommandResult = run_on_node(&session_obj.0, &registry_cmd).await;
     match registry_result {
       NodeCommandResult::Success => println!("K3s registry configuration applied successfully."),
       NodeCommandResult::Failure(err) => {
         eprintln!("Failed to apply K3s registry configuration: {}", err);
+        return;
+      },
+    }
+
+    println!("Starting K3s agent install on node {} and registering with control plane...", session_obj.1.host);
+    let k3s_agent_install_result = run_on_node(&session_obj.0, &k3s_install_cmd).await;
+    match k3s_agent_install_result {
+      NodeCommandResult::Success => println!("K3s agent install running on node {}.", session_obj.1.host),
+      NodeCommandResult::Failure(err) => {
+        eprintln!("Failed to start K3s agent install on node {}: {}", session_obj.1.host, err);
+        return;
+      },
+    }
+
+    println!("Waiting for K3s agent install on node {}.", session_obj.1.host);
+    let k3s_install_wait_result = run_on_node(&session_obj.0, &k3s_wait_cmd).await;
+    match k3s_install_wait_result {
+      NodeCommandResult::Success => println!("K3s agent successfully installed and registered on node {}.", session_obj.1.host),
+      NodeCommandResult::Failure(err) => {
+        eprintln!("K3s install on node {} did not complete successfully: {}", session_obj.1.host, err);
         return;
       },
     }
@@ -198,7 +216,7 @@ pub async fn setup_bind9(nya: Nya, payload: Payload) {
       eprintln!("Failed to apply Bind9 zone file: {}", err);
       return;
     },
-  }  
+  }
 }
 
 pub async fn setup_helm(_: Nya, payload: Payload) {
@@ -206,9 +224,18 @@ pub async fn setup_helm(_: Nya, payload: Payload) {
   for file in HELM_DIR.files() {
     let path: String = format!("/opt/nya/charts/{}", file.path().display());
     let content: &str = file.contents_utf8().unwrap();
-    let cmd: String = format!("mkdir -p $(dirname {}) && echo '{}' | sudo tee {}", path, content, path);
+    let encoded = general_purpose::STANDARD.encode(content);
+    let cmd: String = format!("sudo mkdir -p $(dirname {}) && echo '{}' | base64 -d | sudo tee {}", path, encoded, path);
     run_on_node(&session, &cmd).await;
   }
+
+    for file in HELM_TEMPLATES_DIR.files() {
+        let path: String = format!("/opt/nya/charts/templates/{}", file.path().display());
+        let content: &str = file.contents_utf8().unwrap();
+        let encoded = general_purpose::STANDARD.encode(content);
+        let cmd: String = format!("sudo mkdir -p $(dirname {}) && echo '{}' | base64 -d | sudo tee {}", path, encoded, path);
+        run_on_node(&session, &cmd).await;
+    }
 
   let k3s_yaml_cmd = "sudo chmod 0644 /etc/rancher/k3s/k3s.yaml && sudo chown $USER:$USER /etc/rancher/k3s/k3s.yaml";
   let _ = run_on_node(&session, k3s_yaml_cmd).await;
@@ -234,3 +261,40 @@ pub async fn setup_tls(nya: Nya, payload: Payload) {
   }
 }
 
+pub async fn on_build_complete(nya: Nya, _: Payload) {
+  let control_plane_base_config = get_control_plane_config(nya.clone()).await;
+  let control_plane_session = create_ssh_session(&control_plane_base_config).await;
+  let ingress_ip = get_from_node(
+    &control_plane_session,
+    "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+  ).await.unwrap();
+  nya.set("ingress_ip", ingress_ip.trim()).await;
+
+  let control_plane_vars: Value = nya.get("nya.control_plane.vars").await;
+  let network_cidr: &str = control_plane_vars.get("network_cidr").unwrap().as_str().unwrap_or("");
+  let domain_name: &str = control_plane_vars.get("domain_name").unwrap().as_str().unwrap_or("");
+  let bind9_context: ClusterBind9Context = ClusterBind9Context {
+    control_plane_ip: ingress_ip,
+    network_cidr: network_cidr.to_string(),
+    domain_name: domain_name.to_string(),
+  };
+
+  let context_value: Value = serde_json::to_value(&bind9_context).unwrap();
+  let tera_context: Context = Context::from_serialize(&context_value).unwrap();
+  let rendered_db: String = tera::Tera::one_off(BIND9_DB_TEMPLATE, &tera_context, false).unwrap();
+  let encoded_db = general_purpose::STANDARD.encode(&rendered_db);
+  let db_cmd = format!(
+    "echo '{}' | base64 -d | sudo tee /etc/bind/zones/db.{}",
+    encoded_db, bind9_context.domain_name
+  );
+  let bind9_db_result = run_on_node(&control_plane_session, &db_cmd).await;
+  match bind9_db_result {
+    NodeCommandResult::Success => println!("Updated Bind9 zone file."),
+    NodeCommandResult::Failure(err) => {
+      eprintln!("Failed to update Bind9 zone file: {}", err);
+    },
+  }
+  run_on_node(&control_plane_session, "sudo systemctl restart bind9").await;
+  run_on_node(&control_plane_session, "sudo systemctl restart k3s").await;
+  println!("Restarted k3s on node {}", &control_plane_base_config.host);
+}

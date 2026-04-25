@@ -5,6 +5,7 @@ use crate::{core::runtime::Nya, ops::types::{BaseNodeConfig, NodeCommandResult}}
 pub async fn get_base_nodes(nya: Nya) -> Vec<BaseNodeConfig> {
   let control_plane_value: Value = nya.get("nya.control_plane").await;
   let nodes_values: Value = nya.get("nya.nodes").await;
+    let control_plane_host = nya.get("nya.control_plane.host").await.to_string();
 
   let control_plane: BaseNodeConfig = BaseNodeConfig ::new(control_plane_value);
   let nodes: Vec<BaseNodeConfig> = nodes_values
@@ -12,6 +13,7 @@ pub async fn get_base_nodes(nya: Nya) -> Vec<BaseNodeConfig> {
     .unwrap_or(&vec![])
     .iter()
     .map(|node| BaseNodeConfig::new(node.clone()))
+      .filter(|config| config.host.as_str() != &control_plane_host)
     .collect();
 
   let mut all_nodes = vec![control_plane.clone()]; 
@@ -25,12 +27,14 @@ pub async fn get_control_plane_config(nya: Nya) -> BaseNodeConfig {
 }
 
 pub async fn get_node_configs(nya: Nya) -> Vec<BaseNodeConfig> {
+    let control_plane_host = nya.get("nya.control_plane.host").await.to_string();
   let nodes_values: Value = nya.get("nya.nodes").await;
   let nodes: Vec<BaseNodeConfig> = nodes_values
     .as_array()
     .unwrap_or(&vec![])
     .iter()
     .map(|node| BaseNodeConfig::new(node.clone()))
+      .filter(|config| config.host.as_str() != &control_plane_host)
     .collect();
   nodes
 }
@@ -97,10 +101,13 @@ pub async fn prepare_base_context(nya: Nya) {
   if control_plane_value == Value::Null || control_plane_value.as_str().unwrap_or("").is_empty() {
     let control_plane_value: Value = nya.get("nya.control_plane").await;
     let host = control_plane_value.get("host").and_then(|v| v.as_str()).unwrap_or("");
-    let _ = nya.set("nya.registry_host", host.to_string()).await;
+    let _ = nya.set("nya.registry_host", format!("{}:{}", host.to_string(), "5000".to_string())).await;
   }
 
   let control_plane_vars = nya.get("nya.control_plane.vars").await;
   let k3s_token = control_plane_vars.get("k3s_token").unwrap().to_string();
   let _ = nya.set("nya.k3s_token", k3s_token).await;
+    let control_plane = nya.get("nya.control_plane").await;
+    let control_plane_host = control_plane.get("host").and_then(|v| v.as_str()).unwrap_or("");
+    let _ = nya.set("nya.control_plane.host", control_plane_host.to_string()).await;
 }

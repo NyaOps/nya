@@ -20,3 +20,10 @@ pub enum NodeCommandResult {
   Success,
   Failure(String),
 }
+
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct ClusterBind9Context {
+  pub control_plane_ip: String,
+  pub network_cidr: String,
+  pub domain_name: String,
+}

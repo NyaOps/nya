@@ -8,12 +8,11 @@ use serde_json::Value;
 use tera::Context;
 
 const SETUP_INGRESS_SCRIPT: &str = include_str!("scripts/setup_ingress.sh");
-const SETUP_INGRESS_CLOUD_SCRIPT: &str = include_str!("scripts/setup_ingress_cloud.sh");
 
 #[derive(Serialize)]
 struct IngressContext {
   domain: String,
-  network_cidr: String,
+  metallb_ip_range: String,
   secret_name: String,
 }
 
@@ -24,21 +23,19 @@ pub async fn setup_ingress(nya: Nya, _: Payload) {
   let session: Session = create_ssh_session(&node_configs).await;
 
   let control_plane_vars: Value = nya.get("nya.control_plane.vars").await;
-  let control_plane_type = control_plane_vars.get("control_plane_type").and_then(|v| v.as_str()).unwrap_or("bare_metal");
   let domain: String = control_plane_vars.get("domain_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-  let network_cidr: String = nya.get("network_cidr").await.as_str().unwrap_or("").to_string();
+  let metallb_ip_range: String = control_plane_vars.get("metallb_ip_range").and_then(|v| v.as_str()).unwrap_or("").to_string();
   let secret_name: String = control_plane_vars.get("secret_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
 
   let ingress_context: IngressContext = IngressContext {
     domain,
-    network_cidr,
+    metallb_ip_range,
     secret_name,
   };
 
-  let ingress_script = if control_plane_type == "cloud" { SETUP_INGRESS_CLOUD_SCRIPT } else { SETUP_INGRESS_SCRIPT };
   let context_value: Value = serde_json::to_value(&ingress_context).unwrap();
   let tera_context: Context = Context::from_serialize(&context_value).unwrap();
-  let rendered_script: String = tera::Tera::one_off(ingress_script, &tera_context, false).unwrap();
+  let rendered_script: String = tera::Tera::one_off(SETUP_INGRESS_SCRIPT, &tera_context, false).unwrap();
 
   let result: NodeCommandResult = run_on_node(&session, &rendered_script).await;
   match result {

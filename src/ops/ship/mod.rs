@@ -1,8 +1,8 @@
-use std::{env, process::Stdio};
+use std::{env, path::PathBuf, process::Stdio};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
-use crate::{core::{payload::Payload, service::{Service, ServiceActions, handle_action}, runtime::Nya}};
+use crate::{core::{payload::Payload, runtime::Nya, service::{Service, ServiceActions, handle_action}}, ops::utils::prepare_base_context};
 
 pub struct NyaShip;
 
@@ -24,11 +24,16 @@ struct PackContext {
 }
 
 async fn build_packs(nya: Nya, _: Payload) {
-  let base_vars = nya.get("nya.control_plane.vars").await;
+  let _ = prepare_base_context(nya.clone()).await;
+  let registry_host_value = nya.get("nya.registry_host").await;
+  let registry_host = registry_host_value.as_str().unwrap_or("");
   let capsule = nya.get("capsule").await;
   let packs = capsule["packs"].as_array().unwrap();
-  let capsule_path = nya.capsule_path().unwrap();
-  let registry_host = base_vars["registry_host"].as_str().unwrap();
+  let full_capsule_path = nya.capsule_path().unwrap();
+  let mut full_capsule_path_buf = PathBuf::from(full_capsule_path);
+  full_capsule_path_buf.pop();
+  full_capsule_path_buf.pop();
+  let capsule_path = full_capsule_path_buf.iter().as_path();
 
   let mut pack_ctx: Vec<PackContext> = vec![];
   let mut build_tasks = vec![];
@@ -149,10 +154,10 @@ async fn push_image(image_name: &str, nya: Nya) {
 }
 
 async fn copy_values(ctx: &PackContext, nya: Nya) {
-    let control_plane = nya.get("nya.control_plane").await["all"]["hosts"]["control_plane"].clone();
-    let host = control_plane["ansible_host"].as_str().unwrap();
-    let user = control_plane["ansible_user"].as_str().unwrap();
-    let ssh_key = control_plane["ansible_ssh_private_key_file"].as_str().unwrap();
+    let control_plane = nya.get("nya.control_plane").await;
+    let host = control_plane["host"].as_str().unwrap();
+    let user = control_plane["user"].as_str().unwrap();
+    let ssh_key = control_plane["ssh_private_key_file"].as_str().unwrap();
     let ssh_key = shellexpand::tilde(ssh_key).to_string();
     
     let values_src = format!("{}/values.yaml", ctx.pack_location);
@@ -170,14 +175,15 @@ async fn copy_values(ctx: &PackContext, nya: Nya) {
 
 async fn helm_deploy(ctx: &PackContext, nya: Nya) {
     let base_vars = nya.get("nya.control_plane.vars").await;
-    let control_plane = nya.get("nya.control_plane").await["all"]["hosts"]["control_plane"].clone();
+    let control_plane = nya.get("nya.control_plane").await;
+    let registry_host_value = nya.get("nya.registry_host").await;
     
-    let host = control_plane["ansible_host"].as_str().unwrap();
-    let user = control_plane["ansible_user"].as_str().unwrap();
-    let ssh_key = control_plane["ansible_ssh_private_key_file"].as_str().unwrap();
+    let host = control_plane["host"].as_str().unwrap();
+    let user = control_plane["user"].as_str().unwrap();
+    let ssh_key = control_plane["ssh_private_key_file"].as_str().unwrap();
     let ssh_key = shellexpand::tilde(ssh_key).to_string();
     
-    let registry_host = base_vars["registry_host"].as_str().unwrap();
+    let registry_host = registry_host_value.as_str().unwrap();
     let domain = base_vars["domain_name"].as_str().unwrap();
     let secret_name = base_vars["secret_name"].as_str().unwrap();
 
@@ -190,11 +196,13 @@ async fn helm_deploy(ctx: &PackContext, nya: Nya) {
         --set domain={} \
         --set secret_name={} \
         --set podAnnotations.deployedAt='{}' \
-        --kubeconfig=/etc/rancher/k3s/k3s.yaml",
+        --kubeconfig=/etc/rancher/k3s/k3s.yaml&& \
+        kubectl rollout status deployment/{} --timeout=120s --kubeconfig=/etc/rancher/k3s/k3s.yaml",
         ctx.pack_name, values_path,
         ctx.pack_name,
         registry_host, domain, secret_name,
-        chrono::Utc::now().timestamp()  // ← Forces pod recreation
+        chrono::Utc::now().timestamp(),  // ← Forces pod recreation
+        ctx.pack_name
     );
     
     let _ = nya.trigger("log", Payload::new(format!("Deploying {}...", ctx.pack_name))).await;
