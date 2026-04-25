@@ -11,14 +11,8 @@ Nya is a free, open-source, portable and self-hostable PaaS. Deploy your apps to
 **What you need:**
 - One or more servers (VPS, bare metal, homelab - anything with Ubuntu 24.04)
 - SSH access to your servers
-- Docker installed locally (for building images)
+- Docker installed locally (for building images) - [see here](https://docs.docker.com/desktop/)
 - Rust/Cargo installed: https://rustup.rs
-
-You'll also need to have the following tools installed on your machine:
-
-- [Ansible](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html)
-- [Docker](https://docs.docker.com/desktop/)
-
 
 **Copy SSH keys to servers (one-time setup):**
 
@@ -85,19 +79,19 @@ Next steps:
 ```
 Update the base config that corresponds with your infrastructure. If you have more than one worker node, you can add another object: 
 ```json
-      "hosts": {
-        "worker1": {
-          "ansible_host": "host",
-          "ansible_user": "username",
-          "ansible_ssh_private_key_file": "~/keyfile"
+      "nya.nodes": [
+        {
+          "host": "host1",
+          "user": "username",
+          "ssh_private_key_file": "~/keyfile"
         },
-        "worker2": {
-          "ansible_host": "host",
-          "ansible_user": "username",
-          "ansible_ssh_private_key_file": "~/keyfile"
-        }
+        {
+          "host": "host2",
+          "user": "username",
+          "ssh_private_key_file": "~/keyfile"
+        },
         ...
-      }
+      ]
 ```
 
 **Build the Base**: 
@@ -192,14 +186,14 @@ Backend: `https://{your pack's name}-api.{your_domain_name}`
 
 ## Troubleshooting
 
-
+## What's Been Shipped?
+- Replaced Ansible with direct SSH
 
 ## What's Next?
 
 Nya is in active development. Planned for future releases:
 
 **v0.2:**
-- Replace Ansible with direct SSH
 - Multi-OS support (Ubuntu + Debian)
 - ARM support
 - Local Nya observation tooling

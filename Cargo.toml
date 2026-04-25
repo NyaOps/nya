@@ -1,6 +1,6 @@
 [package]
 name = "nya_cloud"
-version = "0.1.11"
+version = "0.1.2"
 edition = "2024"
 authors = ["Christopher Smith <input@cybrsmth.com>"]
 license = "Apache-2.0"
