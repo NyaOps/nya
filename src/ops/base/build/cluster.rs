@@ -51,10 +51,9 @@ pub async fn on_finish(_nya: Nya, _: Payload) {
   let control_plane_config: BaseNodeConfig = get_control_plane_config(_nya.clone()).await;
   println!("{}", "Build completed successfully!".green());
   println!("To trust the local CA cert, first install mkcert:");
-  println!(" brew install mkcert");
-  println!(" brew install nss # if you use Firefox");
-  println!("Then run \"mkcert -install\"");
-  println!("Or install it manually from: https://{}/ca.crt", control_plane_config.host);
+  println!("https://github.com/FiloSottile/mkcert");
+  println!("Then run the following to download your cert:");
+  println!("ssh {}@{} \"sudo cat /root/.local/share/mkcert/rootCA.pem\" > nya-ca.crt", control_plane_config.user, control_plane_config.host);
   println!("You can now create a Capsule to deploy your apps to Nya by running: {}", "nya capsule new -c ./your_capsule_path".purple());
 }
 
@@ -132,7 +131,8 @@ pub async fn setup_bind9(nya: Nya, payload: Payload) {
   let control_plane: Value = nya.get("nya.control_plane").await;
   let control_plane_vars: Value = nya.get("nya.control_plane.vars").await;
   let control_plane_ip: &str = control_plane.get("host").unwrap().as_str().unwrap_or("");
-  let network_cidr: &str = control_plane_vars.get("network_cidr").unwrap().as_str().unwrap_or("");
+  let network_cidr_value= nya.get("network_cidr").await;
+  let network_cidr = network_cidr_value.as_str().unwrap_or("");
   let domain_name: &str = control_plane_vars.get("domain_name").unwrap().as_str().unwrap_or("");
   let bind9_context: ClusterBind9Context = ClusterBind9Context {
     control_plane_ip: control_plane_ip.to_string(),
@@ -271,7 +271,8 @@ pub async fn on_build_complete(nya: Nya, _: Payload) {
   nya.set("ingress_ip", ingress_ip.trim()).await;
 
   let control_plane_vars: Value = nya.get("nya.control_plane.vars").await;
-  let network_cidr: &str = control_plane_vars.get("network_cidr").unwrap().as_str().unwrap_or("");
+  let network_cidr_value= nya.get("network_cidr").await;
+  let network_cidr = network_cidr_value.as_str().unwrap_or("");
   let domain_name: &str = control_plane_vars.get("domain_name").unwrap().as_str().unwrap_or("");
   let bind9_context: ClusterBind9Context = ClusterBind9Context {
     control_plane_ip: ingress_ip,

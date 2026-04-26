@@ -4,6 +4,8 @@ use openssh::Session;
 use tera::Context;
 use types::BaseNodeConfig;
 use utils::create_ssh_session;
+use crate::ops::utils::get_node_configs;
+
 const INSTALL_K3S_SCRIPT: &str = include_str!("scripts/install_k3s.sh");
 const K3S_REGISTRIES_TEMPLATE: &str = include_str!("templates/registries.yaml");
 const INSTALL_HELM_SCRIPT: &str = include_str!("scripts/install_helm.sh");
@@ -88,17 +90,20 @@ pub async fn build_control_plane_action(nya: Nya, _: Payload) {
   } else {
     println!("Helm is already installed on control plane, skipping installation.");
   }
-
-  let get_node_token_cmd = "sudo cat /var/lib/rancher/k3s/server/node-token";
-  let token_result = get_from_node(&session, get_node_token_cmd).await;
-  match token_result {
-    Ok(token) => {
-      let _ = nya.set("k3s_node_token", token.trim().to_string()).await;
-      println!("Retrieved K3s node token successfully.");
-    },
-    Err(err) => {
-      eprintln!("Failed to retrieve K3s node token: {}", err);
-      return;
-    },
+  
+  let node_configs = get_node_configs(nya.clone()).await;
+  if node_configs.len() > 0 {
+    let get_node_token_cmd = "sudo cat /var/lib/rancher/k3s/server/node-token";
+    let token_result = get_from_node(&session, get_node_token_cmd).await;
+    match token_result {
+      Ok(token) => {
+        let _ = nya.set("k3s_node_token", token.trim().to_string()).await;
+        println!("Retrieved K3s node token successfully.");
+      },
+      Err(err) => {
+        eprintln!("Failed to retrieve K3s node token: {}", err);
+        return;
+      },
+    }
   }
 }

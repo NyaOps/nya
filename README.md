@@ -188,7 +188,10 @@ Backend: `https://{your pack's name}-api.{your_domain_name}`
 
 ## What's Been Shipped?
 - Replaced Ansible with direct SSH
-
+  - Ansible dependency removed, only needed dependencies are Docker and a viable SSH client
+- Single node clusters supported
+  - Leave `nya.nodes` as an empty array, and the control panel will be the only node in the cluster
+  
 ## What's Next?
 
 Nya is in active development. Planned for future releases:
